@@ -1,15 +1,17 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
 
 /**
  * Pre-configured Axios instance for communicating with the FastAPI backend.
  * Uses VITE_API_BASE_URL without hardcoding backend URLs in React components.
+ * Configured with a 60-second timeout to handle Render free-tier cold starts.
  * Never connects directly to external railway APIs or exposes backend secrets.
  */
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',

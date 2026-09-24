@@ -1,4 +1,11 @@
+import os
 import sys
+from pathlib import Path
+
+# Ensure the backend directory is in sys.path so 'app.xxx' imports work regardless of working directory
+_backend_dir = str(Path(__file__).resolve().parent.parent)
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
 
 # Compatibility shim: models pickled with older scikit-learn (e.g. 1.6.1) reference
 # the Cython loss extension module as top-level '_loss' instead of 'sklearn._loss._loss'.
@@ -13,7 +20,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.config import FRONTEND_URL
+from app.config import FRONTEND_URL, FRONTEND_URLS
 from app.api.train_routes import router as train_router
 from app.services.collection_scheduler import get_collection_scheduler
 from app.services.data_collector import get_data_collector, DataCollectorError
@@ -63,22 +70,31 @@ app = FastAPI(
     openapi_tags=tags_metadata,
 )
 
-# Configure CORS - strictly restricted to configured frontend origin
+# Configure CORS - allow configured frontend URL(s), local dev servers, and Vercel deployments
 allowed_origins = [
-    origin.strip()
-    for origin in [
-        FRONTEND_URL,
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ]
-    if origin and origin.strip()
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://localhost:8000",
 ]
+for u in FRONTEND_URLS:
+    if u and u not in allowed_origins:
+        allowed_origins.append(u)
+if FRONTEND_URL and FRONTEND_URL not in allowed_origins:
+    allowed_origins.append(FRONTEND_URL)
+
 allowed_origins = list(dict.fromkeys(allowed_origins))
+
+# Allow localhost as well as any Vercel deployment (*.vercel.app)
+cors_origin_regex = os.getenv(
+    "ALLOWED_ORIGIN_REGEX",
+    r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app)$",
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,6 +102,18 @@ app.add_middleware(
 
 # Include API routers
 app.include_router(train_router)
+
+
+@app.get("/")
+async def root():
+    """Root endpoint providing service information and API links."""
+    return {
+        "service": "Dynamic Railway ETA Prediction API",
+        "status": "online",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/api/health",
+    }
 
 
 @app.get("/api/health")
@@ -314,6 +342,12 @@ async def get_collection_status():
     """Retrieve runtime status of the automatic periodic train collection scheduler."""
     scheduler = get_collection_scheduler()
     return scheduler.get_status()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
 
 
 

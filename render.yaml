@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: railradar-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: oregon
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: RAILRADAR_API_KEY
+        sync: false
+      - key: RAILRADAR_API_BASE_URL
+        value: https://api.railradar.in
+      - key: RAILRADAR_API_ENDPOINT
+        value: /v1/trains/{number}/live
+      - key: FRONTEND_URL
+        value: https://*.vercel.app
+      - key: TRACKED_TRAIN_NUMBERS
+        value: "11013,11014"
+      - key: COLLECTION_INTERVAL_MINUTES
+        value: "15"

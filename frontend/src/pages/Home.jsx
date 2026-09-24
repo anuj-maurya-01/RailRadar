@@ -162,7 +162,7 @@ export const Home = () => {
 
         // Clean, user-friendly error formatting (never exposing stack traces, keys, or paths)
         if (!err.response) {
-          setError('Unable to connect to backend server. Please verify FastAPI is running at http://localhost:8000.');
+          setError('Unable to connect to backend server. If using Render free tier, the backend may take up to a minute to wake up.');
         } else {
           const status = err.response.status;
           const upstreamMsg = err.response.data?.message;

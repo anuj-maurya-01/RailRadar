@@ -199,13 +199,27 @@ class RailwayAPIService:
     _cached_first_record: Optional[Dict[str, Any]] = None
 
     @classmethod
+    def _find_dataset_dir(cls) -> Optional[Path]:
+        """Locate Dataset_1 directory across various execution and deployment directory structures."""
+        candidates = [
+            Path(__file__).resolve().parents[3] / "Dataset_1",
+            Path(__file__).resolve().parents[2] / "Dataset_1",
+            Path.cwd() / "Dataset_1",
+            Path.cwd().parent / "Dataset_1",
+        ]
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_dir():
+                return candidate
+        return None
+
+    @classmethod
     def _ensure_dataset_loaded(cls) -> None:
         """Load and index Dataset_1 once in-memory for instant lookups."""
         if cls._cached_dataset is not None:
             return
 
-        dataset_dir = Path(__file__).resolve().parents[3] / "Dataset_1"
-        if not dataset_dir.exists():
+        dataset_dir = cls._find_dataset_dir()
+        if not dataset_dir or not dataset_dir.exists():
             cls._cached_dataset = {}
             cls._cached_first_record = None
             return
@@ -239,8 +253,8 @@ class RailwayAPIService:
         """Return a local demo payload when the RailRadar API key is not configured."""
         self._ensure_dataset_loaded()
         if not self._cached_dataset:
-            dataset_dir = Path(__file__).resolve().parents[3] / "Dataset_1"
-            if not dataset_dir.exists():
+            dataset_dir = self._find_dataset_dir()
+            if not dataset_dir or not dataset_dir.exists():
                 raise RailwayAPIException(
                     status_code=401,
                     message="RailRadar API key is missing. Please set RAILRADAR_API_KEY in backend/.env.",
