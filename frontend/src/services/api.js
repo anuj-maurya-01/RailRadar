@@ -32,6 +32,31 @@ export const getTrain = async (trainNumber) => {
 };
 
 /**
+ * Retrieve live summary of prominent tracked trains with KPIs and delay alerts.
+ * Calls: GET ${VITE_API_BASE_URL}/api/trains/live-summary
+ * @returns {Promise<object>} Summary with trains array, stats object, and alerts array
+ */
+export const getLiveSummary = async () => {
+  const response = await apiClient.get('/api/trains/live-summary');
+  return response.data;
+};
+
+/**
+ * Retrieve autocomplete search suggestions across Indian Railways dataset.
+ * Calls: GET ${VITE_API_BASE_URL}/api/trains/search-suggestions?q={query}
+ * @param {string} query Search input
+ * @returns {Promise<object>} Object with results array
+ */
+export const getSearchSuggestions = async (query) => {
+  const cleanQuery = String(query || '').trim();
+  if (!cleanQuery) return { success: true, results: [] };
+  const response = await apiClient.get(`/api/trains/search-suggestions`, {
+    params: { q: cleanQuery },
+  });
+  return response.data;
+};
+
+/**
  * Check backend service availability.
  * @returns {Promise<object>} Health check status
  */
@@ -52,6 +77,9 @@ export const getCollectionStatus = async () => {
 export default {
   apiClient,
   getTrain,
+  getLiveSummary,
+  getSearchSuggestions,
   getHealth,
   getCollectionStatus,
 };
+

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
   CheckCircle2,
   Clock,
@@ -7,6 +7,11 @@ import {
   AlertCircle,
   CalendarClock,
   ArrowDownCircle,
+  Maximize2,
+  Minimize2,
+  MapPin,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   formatSafeText,
@@ -16,10 +21,20 @@ import {
 
 /**
  * Route & Station Timeline Component.
- * Displays the complete train journey as an accessible, responsive vertical timeline
- * visually distinguishing Completed, Current, Next, Upcoming, and Destination stops.
+ * Space-efficient, interactive transit timeline:
+ * - Constrained default max-height with smooth scrolling
+ * - Jump-to-current position button
+ * - Filter tabs (All Stops, Remaining, Passed)
+ * - Collapsible passed stops group to reduce vertical scroll
+ * - Compact, high-density row design
  */
 export const RouteTimeline = ({ trainData }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [filterTab, setFilterTab] = useState('all'); // 'all' | 'remaining' | 'passed'
+  const [showPassedStops, setShowPassedStops] = useState(false);
+  const currentRef = useRef(null);
+  const containerRef = useRef(null);
+
   // 1. Resolve and classify all stations along the route
   const { stationsList, currentIndex, nextIndex, hasValidRoute } = useMemo(() => {
     const routeStations = trainData?.route?.stations;
@@ -65,14 +80,32 @@ export const RouteTimeline = ({ trainData }) => {
       );
     }
 
-    // C. Fallback: If next_station is matched, current station may be the preceding one
-    if (matchedCurrentIdx === -1 && nextCode) {
+    // C. Match by station name if code/sequence did not match
+    if (matchedCurrentIdx === -1 && liveStatus.current_station_name) {
+      const cleanName = liveStatus.current_station_name.trim().toUpperCase();
+      matchedCurrentIdx = stations.findIndex(
+        (s) => s.name && (s.name.toUpperCase().includes(cleanName) || cleanName.includes(s.name.toUpperCase()))
+      );
+    }
+
+    // D. Fallback: If next_station is matched, current station may be the preceding one
+    if (matchedCurrentIdx === -1 && (nextCode || prediction.next_station)) {
+      const cleanNextName = (prediction.next_station || '').trim().toUpperCase();
       const matchedNextIdx = stations.findIndex(
-        (s) => s.code && s.code.toUpperCase() === nextCode
+        (s) =>
+          (nextCode && s.code && s.code.toUpperCase() === nextCode) ||
+          (cleanNextName && s.name && (s.name.toUpperCase().includes(cleanNextName) || cleanNextName.includes(s.name.toUpperCase())))
       );
       if (matchedNextIdx > 0) {
         matchedCurrentIdx = matchedNextIdx - 1;
+      } else if (matchedNextIdx === 0) {
+        matchedCurrentIdx = 0;
       }
+    }
+
+    // E. Default fallback: Ensure live position is ALWAYS highlighted
+    if (matchedCurrentIdx === -1 && stations.length > 0) {
+      matchedCurrentIdx = 0;
     }
 
     // Determine next station index
@@ -94,23 +127,44 @@ export const RouteTimeline = ({ trainData }) => {
     };
   }, [trainData]);
 
-  // Requirement 11: Route Unavailable Fallback
+  // Jump to Current Station (scrolls container only, not the page)
+  const scrollToCurrent = () => {
+    if (currentRef.current && containerRef.current) {
+      const container = containerRef.current;
+      const target = currentRef.current;
+      const targetOffset = target.offsetTop - container.offsetTop;
+      container.scrollTo({
+        top: Math.max(0, targetOffset - container.clientHeight / 2 + target.clientHeight / 2),
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  // Auto-scroll inside container only on mount or train change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToCurrent();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [currentIndex, filterTab]);
+
+  // Route Unavailable Fallback
   if (!hasValidRoute) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 shadow-sm">
-        <div className="flex items-center space-x-2.5 pb-3 border-b border-slate-100 mb-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
+        <div className="flex items-center space-x-2.5 pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
           <ArrowDownCircle className="w-5 h-5 text-slate-400" />
-          <h3 className="text-base font-bold text-slate-900">Route &amp; Station Timeline</h3>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">Route &amp; Station Timeline</h3>
         </div>
 
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 sm:p-8 text-center max-w-lg mx-auto">
-          <div className="w-12 h-12 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-500 mx-auto mb-3">
+        <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-6 sm:p-8 text-center max-w-lg mx-auto">
+          <div className="w-12 h-12 rounded-full bg-slate-200/80 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 mx-auto mb-3">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h4 className="text-sm sm:text-base font-bold text-slate-800">
+          <h4 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">
             Route information is not available.
           </h4>
-          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
             Detailed station timetable and intermediate checkpoint schedules are not exposed for this train service.
           </p>
         </div>
@@ -122,56 +176,128 @@ export const RouteTimeline = ({ trainData }) => {
   const prediction = trainData?.prediction || {};
   const lastIdx = stationsList.length - 1;
 
+  const passedCount = currentIndex >= 0 ? currentIndex : 0;
+  const remainingCount = Math.max(0, stationsList.length - (currentIndex >= 0 ? currentIndex : 0));
+
+  // Determine filtered list based on tab
+  const displayedStations = stationsList.filter((_, idx) => {
+    if (filterTab === 'remaining') {
+      return currentIndex < 0 || idx >= currentIndex;
+    }
+    if (filterTab === 'passed') {
+      return currentIndex >= 0 && idx < currentIndex;
+    }
+    return true;
+  });
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
       {/* Timeline Section Header */}
-      <div className="px-5 sm:px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+      <div className="px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 bg-slate-50 dark:bg-slate-850">
+        <div className="flex items-center space-x-2.5 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
             <ArrowDownCircle className="w-4 h-4" />
           </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900 tracking-tight">
-              Route &amp; Station Timeline
-            </h3>
-            <p className="text-xs text-slate-500">
-              {stationsList.length} Scheduled Station Checkpoints
-            </p>
+          <div className="min-w-0">
+            <div className="flex items-center space-x-2">
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
+                Route &amp; Station Timeline
+              </h3>
+              <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-mono font-bold shrink-0">
+                {stationsList.length} Stops
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Status Legend */}
-        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
-          <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-            <CheckCircle2 className="w-3 h-3 text-slate-400" />
-            <span>Passed</span>
+        {/* Action Controls & Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Filter Pills */}
+          <div className="flex items-center bg-slate-200/70 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setFilterTab('all')}
+              className={`px-2.5 py-1 rounded-md transition-colors ${
+                filterTab === 'all'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('remaining')}
+              className={`px-2.5 py-1 rounded-md transition-colors ${
+                filterTab === 'remaining'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Remaining ({remainingCount})
+            </button>
+            {passedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setFilterTab('passed')}
+                className={`px-2.5 py-1 rounded-md transition-colors ${
+                  filterTab === 'passed'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Passed ({passedCount})
+              </button>
+            )}
           </div>
-          <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
-            <span>🚆</span>
-            <span>Current Location</span>
-          </div>
-          <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-semibold">
-            <Milestone className="w-3 h-3 text-amber-600" />
-            <span>Next Stop</span>
-          </div>
-          <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-semibold">
-            <Flag className="w-3 h-3 text-rose-600" />
-            <span>Terminus</span>
-          </div>
+
+          {/* Jump to Live Position Button */}
+          {currentIndex >= 0 && (
+            <button
+              type="button"
+              onClick={scrollToCurrent}
+              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold hover:bg-blue-100 transition-colors"
+              title="Jump to current live train position"
+            >
+              <MapPin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="hidden sm:inline">Jump to</span> Live
+            </button>
+          )}
+
+          {/* Expand / Collapse Height Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors"
+            title={isExpanded ? 'Collapse timeline height' : 'Expand full timeline'}
+            aria-label={isExpanded ? 'Collapse timeline height' : 'Expand full timeline'}
+          >
+            {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 
-      {/* Timeline Stations List */}
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="relative pl-6 sm:pl-8">
+      {/* Timeline Stations List Container */}
+      <div
+        ref={containerRef}
+        className={`p-3 sm:p-5 transition-all duration-200 ${
+          isExpanded ? 'max-h-none' : 'max-h-[460px] overflow-y-auto custom-scrollbar'
+        }`}
+      >
+        <div className="relative pl-5 sm:pl-7">
           {/* Continuous Vertical Connecting Spine Line */}
           <div
-            className="absolute left-[15px] sm:left-[19px] top-4 bottom-4 w-0.5 bg-slate-200"
+            className="absolute left-[13px] sm:[17px] top-3 bottom-3 w-0.5 bg-slate-200 dark:bg-slate-700"
             aria-hidden="true"
           />
 
-          <div className="space-y-6">
-            {stationsList.map((station, idx) => {
+          <div className="space-y-2">
+            {displayedStations.map((station, mapIdx) => {
+              const originalIdx = stationsList.findIndex(
+                (s) => s.code === station.code && s.sequence === station.sequence
+              );
+              const idx = originalIdx >= 0 ? originalIdx : mapIdx;
+
               const isFirst = idx === 0;
               const isLast = idx === lastIdx;
               const isCurrent = idx === currentIndex;
@@ -206,225 +332,187 @@ export const RouteTimeline = ({ trainData }) => {
                 ? formatTimeDisplay(prediction.destination_eta)
                 : null;
 
-              // Node icon & spine styling
-              let nodeStyle = 'bg-slate-300 border-white text-slate-600';
-              let cardStyle = 'bg-white border-slate-200/80 hover:border-slate-300';
-              let badgeText = 'Scheduled Stop';
-              let badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+              // Compact node & card styling
+              let nodeStyle = 'bg-slate-300 dark:bg-slate-700 border-white dark:border-slate-900 text-slate-600 dark:text-slate-300';
+              let cardStyle = 'bg-white dark:bg-slate-850 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700';
+              let badgeText = '';
+              let badgeClass = '';
 
               if (isCurrent) {
-                nodeStyle = 'bg-blue-600 border-white ring-4 ring-blue-100 text-white animate-pulse';
-                cardStyle = 'bg-blue-50/40 border-blue-300 shadow-xs ring-1 ring-blue-200';
-                badgeText = 'CURRENT LOCATION';
-                badgeClass = 'bg-blue-600 text-white font-bold border-blue-600';
+                nodeStyle = 'bg-blue-600 border-white dark:border-slate-900 ring-3 ring-blue-100 dark:ring-blue-950 text-white animate-pulse';
+                cardStyle = 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-400 dark:border-blue-700 ring-1 ring-blue-300 dark:ring-blue-800 shadow-xs';
+                badgeText = 'LIVE LOCATION';
+                badgeClass = 'bg-blue-600 text-white font-bold';
               } else if (isNext) {
-                nodeStyle = 'bg-amber-500 border-white ring-4 ring-amber-100 text-white';
-                cardStyle = 'bg-amber-50/30 border-amber-300 shadow-xs';
+                nodeStyle = 'bg-amber-500 border-white dark:border-slate-900 ring-3 ring-amber-100 dark:ring-amber-950 text-white';
+                cardStyle = 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700 shadow-xs';
                 badgeText = 'NEXT STOP';
-                badgeClass = 'bg-amber-100 text-amber-800 font-bold border-amber-300';
+                badgeClass = 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold border border-amber-300 dark:border-amber-700';
               } else if (isLast) {
-                nodeStyle = 'bg-rose-600 border-white ring-2 ring-rose-100 text-white';
-                cardStyle = 'bg-rose-50/30 border-rose-200';
-                badgeText = 'TERMINUS DESTINATION';
-                badgeClass = 'bg-rose-100 text-rose-800 font-bold border-rose-200';
+                nodeStyle = 'bg-rose-600 border-white dark:border-slate-900 text-white';
+                cardStyle = 'bg-rose-50/20 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800';
+                badgeText = 'TERMINUS';
+                badgeClass = 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-800';
               } else if (isFirst) {
                 nodeStyle = isPassed
-                  ? 'bg-emerald-600 border-white text-white'
-                  : 'bg-slate-700 border-white text-white';
-                badgeText = isPassed ? 'PASSED SOURCE' : 'ORIGIN SOURCE';
+                  ? 'bg-emerald-600 border-white dark:border-slate-900 text-white'
+                  : 'bg-slate-700 dark:bg-slate-600 border-white dark:border-slate-900 text-white';
+                badgeText = isPassed ? 'ORIGIN (PASSED)' : 'ORIGIN';
                 badgeClass = isPassed
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-slate-100 text-slate-700 border-slate-200';
+                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
               } else if (isPassed) {
-                nodeStyle = 'bg-emerald-600 border-white text-white';
-                cardStyle = 'bg-slate-50/60 border-slate-200/60 opacity-80';
+                nodeStyle = 'bg-emerald-600 border-white dark:border-slate-900 text-white';
+                cardStyle = 'bg-slate-50/50 dark:bg-slate-850/40 border-slate-200/50 dark:border-slate-800 opacity-75';
                 badgeText = 'PASSED';
-                badgeClass = 'bg-slate-100 text-slate-500 border-slate-200';
-              } else if (isUpcoming) {
-                badgeText = 'UPCOMING';
-                badgeClass = 'bg-slate-50 text-slate-600 border-slate-200';
+                badgeClass = 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400';
               }
 
               return (
-                <div key={`stn-${station.code || station.sequence}-${idx}`} className="relative">
-                  {/* Timeline Node Point on the Spine */}
+                <React.Fragment key={`stn-${station.code || station.sequence}-${idx}`}>
                   <div
-                    className={`absolute -left-[23px] sm:-left-[27px] top-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold shadow-xs z-10 transition-transform ${nodeStyle}`}
-                    aria-label={`${badgeText}: ${station.name}`}
+                    ref={isCurrent ? currentRef : null}
+                    className="relative"
                   >
-                    {isCurrent ? (
-                      <span className="text-sm">🚆</span>
-                    ) : isNext ? (
-                      <Milestone className="w-3.5 h-3.5" />
-                    ) : isLast ? (
-                      <Flag className="w-3.5 h-3.5" />
-                    ) : isPassed ? (
-                      <CheckCircle2 className="w-4 h-4" />
-                    ) : (
-                      <span className="text-[10px] font-mono">{station.sequence}</span>
-                    )}
-                  </div>
+                    {/* Compact Timeline Node Point */}
+                    <div
+                      className={`absolute -left-[20px] sm:-left-[24px] top-2.5 w-6 h-6 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold shadow-xs z-10 transition-transform ${nodeStyle}`}
+                      aria-label={`${badgeText || 'Stop'}: ${station.name}`}
+                    >
+                      {isCurrent ? (
+                        <span className="text-[11px]">🚆</span>
+                      ) : isNext ? (
+                        <Milestone className="w-3 h-3" />
+                      ) : isLast ? (
+                        <Flag className="w-3 h-3" />
+                      ) : isPassed ? (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      ) : (
+                        <span className="font-mono">{station.sequence}</span>
+                      )}
+                    </div>
 
-                  {/* Station Information Card */}
-                  <div className={`p-4 rounded-xl border transition-all ${cardStyle}`}>
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      {/* Station Identity */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                          {/* Station Status Badge */}
+                    {/* Streamlined Station Card */}
+                    <div
+                      className={`py-2 px-3 sm:px-4 rounded-lg border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4 ${cardStyle}`}
+                    >
+                      {/* Left: Station Identity */}
+                      <div className="min-w-0 flex items-center space-x-2 flex-wrap">
+                        {badgeText && (
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${badgeClass}`}
+                            className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold shrink-0 ${badgeClass}`}
                           >
                             {badgeText}
                           </span>
+                        )}
 
-                          {/* Station Sequence */}
-                          <span className="text-xs font-mono text-slate-400">
-                            Stop #{station.sequence}
+                        <span className="text-xs font-mono text-slate-400 dark:text-slate-500 shrink-0">
+                          #{station.sequence}
+                        </span>
+
+                        <h4
+                          className={`text-sm sm:text-base font-bold tracking-tight truncate ${
+                            isCurrent
+                              ? 'text-blue-900 dark:text-blue-300 font-extrabold'
+                              : isNext
+                              ? 'text-amber-950 dark:text-amber-300 font-extrabold'
+                              : 'text-slate-900 dark:text-white'
+                          }`}
+                          title={station.name}
+                        >
+                          {formatSafeText(station.name)}
+                        </h4>
+
+                        {station.code && (
+                          <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-mono font-bold border border-slate-200 dark:border-slate-700 shrink-0">
+                            {station.code}
                           </span>
+                        )}
 
-                          {/* Route Distance if available */}
-                          {station.distance !== null && (
-                            <span className="text-xs text-slate-400">
-                              • {station.distance} km
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Station Name & Code (Graceful Long Name Wrapping) */}
-                        <div className="mt-1.5 flex items-baseline space-x-2 flex-wrap">
-                          <h4
-                            className={`text-base sm:text-lg font-bold tracking-tight break-words ${
-                              isCurrent
-                                ? 'text-blue-900 font-extrabold'
-                                : isNext
-                                ? 'text-amber-950 font-extrabold'
-                                : 'text-slate-900'
-                            }`}
-                          >
-                            {formatSafeText(station.name)}
-                          </h4>
-                          {station.code && (
-                            <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 text-xs font-mono font-bold border border-slate-200">
-                              {station.code}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Live Current Station Meta */}
-                        {isCurrent && (
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                            {liveStatus.status && (
-                              <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-medium capitalize">
-                                Status: {liveStatus.status}
-                              </span>
-                            )}
-                            <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-medium border border-amber-200">
-                              LIVE DELAY: {formatDelayDisplay(liveStatus.current_delay_minutes)}
-                            </span>
-                          </div>
+                        {station.distance !== null && (
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0 hidden md:inline">
+                            • {station.distance} km
+                          </span>
                         )}
                       </div>
 
-                      {/* Station Timetable & Status Timing Block */}
-                      <div className="shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
-                        <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 sm:gap-4 text-xs font-mono">
-                          {/* Arrival Timing */}
-                          <div className="bg-white/80 p-2 rounded-lg border border-slate-200/80 min-w-[105px]">
-                            <div className="text-[10px] font-sans font-semibold text-slate-400 uppercase flex items-center space-x-1">
-                              <CalendarClock className="w-3 h-3 text-slate-400" />
-                              <span>Arrival</span>
-                            </div>
-
-                            {/* Scheduled */}
-                            {schedArr !== 'Not available' && (
-                              <div className="text-slate-700 font-medium mt-0.5">
-                                <span className="text-[10px] text-slate-400 font-sans mr-1">Sch:</span>
-                                <span>{schedArr}</span>
-                              </div>
-                            )}
-
-                            {/* Next Station Expected Arrival */}
-                            {isNext && expectedArr && expectedArr !== 'Not available' && (
-                              <div className="text-blue-700 font-bold mt-0.5">
-                                <span className="text-[10px] text-blue-500 font-sans mr-1">Exp:</span>
-                                <span>{expectedArr}</span>
-                              </div>
-                            )}
-
-                            {/* Passed Station Actual Arrival */}
-                            {isPassed && actArr && actArr !== 'Not available' && (
-                              <div className="text-emerald-700 font-semibold mt-0.5">
-                                <span className="text-[10px] text-emerald-500 font-sans mr-1">Act:</span>
-                                <span>{actArr}</span>
-                              </div>
-                            )}
-
-                            {/* Destination ETA */}
-                            {isLast && destEta && destEta !== 'Not available' && (
-                              <div className="text-emerald-700 font-bold mt-0.5">
-                                <span className="text-[10px] text-emerald-500 font-sans mr-1">ETA:</span>
-                                <span>{destEta}</span>
-                              </div>
-                            )}
-
-                            {/* Fallback if no arrival information exists */}
-                            {schedArr === 'Not available' &&
-                              !expectedArr &&
-                              !actArr &&
-                              !destEta && (
-                                <div className="text-slate-400 italic text-[11px] mt-0.5">
-                                  {isFirst ? 'Origin Stop' : '--:--'}
-                                </div>
-                              )}
-                          </div>
-
-                          {/* Departure Timing */}
-                          <div className="bg-white/80 p-2 rounded-lg border border-slate-200/80 min-w-[105px]">
-                            <div className="text-[10px] font-sans font-semibold text-slate-400 uppercase flex items-center space-x-1">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              <span>Departure</span>
-                            </div>
-
-                            {/* Scheduled */}
-                            {schedDep !== 'Not available' && (
-                              <div className="text-slate-700 font-medium mt-0.5">
-                                <span className="text-[10px] text-slate-400 font-sans mr-1">Sch:</span>
-                                <span>{schedDep}</span>
-                              </div>
-                            )}
-
-                            {/* Next Station Expected Departure */}
-                            {isNext && expectedDep && expectedDep !== 'Not available' && (
-                              <div className="text-blue-700 font-bold mt-0.5">
-                                <span className="text-[10px] text-blue-500 font-sans mr-1">Exp:</span>
-                                <span>{expectedDep}</span>
-                              </div>
-                            )}
-
-                            {/* Passed Station Actual Departure */}
-                            {isPassed && actDep && actDep !== 'Not available' && (
-                              <div className="text-emerald-700 font-semibold mt-0.5">
-                                <span className="text-[10px] text-emerald-500 font-sans mr-1">Act:</span>
-                                <span>{actDep}</span>
-                              </div>
-                            )}
-
-                            {/* Fallback if no departure timing exists */}
-                            {schedDep === 'Not available' && !expectedDep && !actDep && (
-                              <div className="text-slate-400 italic text-[11px] mt-0.5">
-                                {isLast ? 'Terminus' : '--:--'}
-                              </div>
-                            )}
-                          </div>
+                      {/* Right: Timetable & ETA Information */}
+                      <div className="flex items-center space-x-2 sm:space-x-3 text-xs font-mono shrink-0 flex-wrap">
+                        {/* Scheduled times */}
+                        <div className="text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
+                          <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span>
+                            {schedArr !== 'Not available' ? schedArr : '--:--'}
+                            <span className="mx-1 text-slate-300 dark:text-slate-600">/</span>
+                            {schedDep !== 'Not available' ? schedDep : '--:--'}
+                          </span>
                         </div>
+
+                        {/* Special Status Timing Tags */}
+                        {isCurrent && liveStatus.current_delay_minutes !== undefined && (
+                          <span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-700">
+                            {formatDelayDisplay(liveStatus.current_delay_minutes)}
+                          </span>
+                        )}
+
+                        {isNext && expectedArr && expectedArr !== 'Not available' && (
+                          <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold border border-amber-300 dark:border-amber-700">
+                            Exp: {expectedArr}
+                          </span>
+                        )}
+
+                        {isPassed && actArr && actArr !== 'Not available' && (
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-medium">
+                            Act: {actArr}
+                          </span>
+                        )}
+
+                        {isLast && destEta && destEta !== 'Not available' && (
+                          <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-black shadow-xs">
+                            ETA: {destEta}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
+        </div>
+      </div>
+
+      {/* Footer Summary Ribbon */}
+      <div className="px-4 sm:px-6 py-2.5 bg-slate-50 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center space-x-3">
+          <span>
+            Passed: <strong className="text-slate-700 dark:text-slate-200">{passedCount}</strong>
+          </span>
+          <span>•</span>
+          <span>
+            Remaining: <strong className="text-slate-700 dark:text-slate-200">{remainingCount}</strong>
+          </span>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          {!isExpanded && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(true)}
+              className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            >
+              Expand All
+            </button>
+          )}
+          {isExpanded && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            >
+              Compact View
+            </button>
+          )}
         </div>
       </div>
     </div>

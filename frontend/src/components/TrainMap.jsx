@@ -148,12 +148,19 @@ const resolveMapData = (trainData) => {
   const currentStnCode = (liveStatus.current_station_code || '').toUpperCase();
   const nextStnCode = (prediction.next_station_code || '').toUpperCase();
   const destCode = (train.destination || '').toUpperCase();
+  const currentSeq = liveStatus.current_sequence;
+  const currentName = (liveStatus.current_station_name || '').toUpperCase();
 
   const currentStnObj = stationsWithCoords.find(
-    (s) => s.code && s.code.toUpperCase() === currentStnCode
+    (s) =>
+      (currentSeq !== null && currentSeq !== undefined && Number(s.sequence) === Number(currentSeq)) ||
+      (s.code && currentStnCode && s.code.toUpperCase() === currentStnCode) ||
+      (s.name && currentName && s.name.toUpperCase().includes(currentName))
   );
   const nextStnObj = stationsWithCoords.find(
-    (s) => s.code && s.code.toUpperCase() === nextStnCode
+    (s) =>
+      (s.code && nextStnCode && s.code.toUpperCase() === nextStnCode) ||
+      (s.name && prediction.next_station && s.name.toUpperCase().includes(prediction.next_station.toUpperCase()))
   );
   const destStnObj = stationsWithCoords.find(
     (s) =>
@@ -186,6 +193,20 @@ const resolveMapData = (trainData) => {
         isGps = false;
         progressPercent = Math.round(progress * 100);
       }
+    }
+  }
+
+  // Fallback to guarantee train position is always visible
+  if (!trainPosition) {
+    if (currentCoords) {
+      trainPosition = currentCoords;
+      isGps = false;
+    } else if (nextCoords) {
+      trainPosition = nextCoords;
+      isGps = false;
+    } else if (stationsWithCoords.length > 0) {
+      trainPosition = stationsWithCoords[0].coords;
+      isGps = false;
     }
   }
 
@@ -255,23 +276,106 @@ function MapBoundsFitter({ bounds }) {
  * TrainMap Component: Displays OpenStreetMap with actual railway route,
  * station markers, and train position (GPS or segment progress estimated).
  */
-export const TrainMap = ({ trainData, loading = false }) => {
+export const TrainMap = ({
+  trainData,
+  activeTrains = [],
+  onSelectTrain = () => {},
+  loading = false,
+}) => {
   // Always call useMemo unconditionally at the top level
   const mapData = useMemo(() => resolveMapData(trainData), [trainData]);
 
   // Loading state placeholder
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm flex flex-col items-center justify-center min-h-[350px] text-center">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-8 shadow-xs flex flex-col items-center justify-center min-h-[380px] text-center">
         <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-3" />
-        <div className="text-sm font-bold text-slate-800">Loading railway route geometry...</div>
-        <div className="text-xs text-slate-500 mt-1">Fetching live station checkpoints and tracking coordinates</div>
+        <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Loading railway route geometry...</div>
+        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Fetching live station checkpoints and tracking coordinates</div>
       </div>
     );
   }
 
+  // If no specific train is selected, display live national network map
   if (!trainData) {
-    return null;
+    const validTrainPoints = (activeTrains || [])
+      .filter((t) => t.latitude && t.longitude)
+      .map((t) => [Number(t.latitude), Number(t.longitude)]);
+
+    const overviewCenter = [21.5, 78.9];
+    const overviewBounds = validTrainPoints.length > 0 ? L.latLngBounds(validTrainPoints) : null;
+
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden h-full flex flex-col">
+        {/* Map Header with Legend */}
+        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/50">
+          <div className="flex items-center space-x-2">
+            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <Navigation className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                Live National Railway Map
+              </h3>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                Active tracked express trains across Indian Railways
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+            {(activeTrains || []).length} Trains Active
+          </span>
+        </div>
+
+        {/* Leaflet Canvas */}
+        <div className="h-[380px] sm:h-[440px] w-full relative z-0">
+          <MapContainer
+            center={overviewCenter}
+            zoom={5}
+            minZoom={4}
+            maxZoom={14}
+            scrollWheelZoom={true}
+            className="h-full w-full"
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {overviewBounds && <MapBoundsFitter bounds={overviewBounds} />}
+
+            {(activeTrains || [])
+              .filter((t) => t.latitude && t.longitude)
+              .map((t) => (
+                <Marker
+                  key={t.train_number}
+                  position={[Number(t.latitude), Number(t.longitude)]}
+                  icon={trainIcon}
+                  eventHandlers={{
+                    click: () => onSelectTrain(t.train_number, t),
+                  }}
+                >
+                  <Popup>
+                    <div className="text-xs p-1">
+                      <div className="font-bold text-slate-900">
+                        {t.train_number} - {t.train_name}
+                      </div>
+                      <div className="text-slate-600 text-[11px] mt-0.5">
+                        {t.source} → {t.destination}
+                      </div>
+                      <div className="text-slate-500 text-[10px] mt-0.5">
+                        Current: <strong>{t.current_station_name}</strong>
+                      </div>
+                      <div className="mt-1 font-semibold text-[10px] text-blue-600">
+                        Click to track this train →
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+          </MapContainer>
+        </div>
+      </div>
+    );
   }
 
   const {
@@ -323,18 +427,18 @@ export const TrainMap = ({ trainData, loading = false }) => {
   const initialCenter = trainPosition || allPoints[0] || [20.5937, 78.9629];
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
       {/* Map Header with Legend */}
-      <div className="px-5 sm:px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50">
+      <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-800/50">
         <div className="flex items-center space-x-2.5">
           <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
             <Navigation className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 tracking-tight">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
               Live Railway Route Map
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {isGps
                 ? 'GPS Tracking Active'
                 : trainPosition

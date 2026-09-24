@@ -1,39 +1,129 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, AlertCircle, Train, ShieldCheck, Compass, Sparkles, RefreshCw, Radio, AlertTriangle } from 'lucide-react';
-import { getTrain } from '../services/api';
+import {
+  Loader2,
+  AlertCircle,
+  Train,
+  ShieldCheck,
+  Compass,
+  Sparkles,
+  RefreshCw,
+  Radio,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Clock,
+  Layers,
+} from 'lucide-react';
+import { getTrain, getLiveSummary } from '../services/api';
+import Header from '../components/Header';
 import TrainSearch from '../components/TrainSearch';
+import KpiCards from '../components/KpiCards';
+import LiveIndicator from '../components/LiveIndicator';
+import SelectedTrainPanel from '../components/SelectedTrainPanel';
+import TrainTable from '../components/TrainTable';
+import AlertsCard from '../components/AlertsCard';
+import TrainMap from '../components/TrainMap';
 import TrainOverview from '../components/TrainOverview';
 import CurrentStatusCard from '../components/CurrentStatusCard';
 import PredictionCard from '../components/PredictionCard';
 import NextStationCard from '../components/NextStationCard';
 import DestinationCard from '../components/DestinationCard';
 import ETADelayChart from '../components/ETADelayChart';
-import TrainMap from '../components/TrainMap';
 import RouteTimeline from '../components/RouteTimeline';
 import { formatDelayDisplay } from '../utils/formatters';
 
-const REFRESH_INTERVAL_MS = 30000; // 30 seconds automatic polling interval
+const REFRESH_INTERVAL_MS = 30000; // 30s live telemetry refresh
 
-export const Home = () => {
+export const Home = ({
+  activeTab = 'dashboard',
+  setActiveTab = () => {},
+  setAlertCount = () => {},
+  searchInputRef = null,
+}) => {
+  // Search & Selected Train State
   const [trainNumber, setTrainNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [trainData, setTrainData] = useState(null);
+  const [selectedSummary, setSelectedSummary] = useState(null);
 
-  // Live Auto-Refresh State
+  // Live Summary & Table State
+  const [summaryData, setSummaryData] = useState({
+    stats: { active_trains: 0, on_time: 0, delayed: 0, cancelled: 0, total_tracked: 0 },
+    trains: [],
+    alerts: [],
+  });
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [tableFilter, setTableFilter] = useState('all');
+
+  // Auto-Refresh & Timing State
   const [activeTrainNumber, setActiveTrainNumber] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [timeAgo, setTimeAgo] = useState('Just now');
 
-  // Refs for tracking active lifecycle, preventing overlapping/stale calls
+  // Deep Details Section Toggle
+  const [deepDetailsExpanded, setDeepDetailsExpanded] = useState(true);
+
+  // Refs for tracking active lifecycle and scroll targets
   const currentRequestIdRef = useRef(0);
   const pollingTimerRef = useRef(null);
   const activeTrainRef = useRef(null);
   const isRefreshingRef = useRef(false);
 
-  // Update relative elapsed time every 5 seconds via timer callback
+  const mapSectionRef = useRef(null);
+  const tableSectionRef = useRef(null);
+  const alertsSectionRef = useRef(null);
+  const deepDetailsRef = useRef(null);
+
+  // 1. Fetch Live Summary on Initial Mount
+  const loadLiveSummary = useCallback(async () => {
+    try {
+      setSummaryLoading(true);
+      const data = await getLiveSummary();
+      if (data && data.success) {
+        setSummaryData({
+          stats: data.stats || {},
+          trains: data.trains || [],
+          alerts: data.alerts || [],
+        });
+        if (data.alerts && Array.isArray(data.alerts)) {
+          setAlertCount(data.alerts.length);
+        }
+        setLastUpdated(new Date());
+        setTimeAgo('Just now');
+      }
+    } catch (err) {
+      console.warn('Initial live summary fetch failed:', err.message);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [setAlertCount]);
+
+  useEffect(() => {
+    loadLiveSummary();
+  }, [loadLiveSummary]);
+
+  // 2. Tab Navigation Actions
+  useEffect(() => {
+    if (activeTab === 'live_trains' && tableSectionRef.current) {
+      tableSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (activeTab === 'alerts' && alertsSectionRef.current) {
+      alertsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (activeTab === 'delays') {
+      setTableFilter('delayed');
+      if (tableSectionRef.current) {
+        tableSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } else if (activeTab === 'stations' && deepDetailsRef.current) {
+      setDeepDetailsExpanded(true);
+      deepDetailsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [activeTab]);
+
+  // 3. Update Relative Elapsed Time Every 5 Seconds
   useEffect(() => {
     if (!lastUpdated) return;
 
@@ -52,30 +142,53 @@ export const Home = () => {
     return () => clearInterval(timer);
   }, [lastUpdated]);
 
-  // Background refresh function
+  // 4. Background Refresh Function
   const refreshTrainData = useCallback(async () => {
     const targetTrain = activeTrainRef.current;
-    if (!targetTrain || isRefreshingRef.current) return;
+    if (isRefreshingRef.current) return;
 
     isRefreshingRef.current = true;
     setIsRefreshing(true);
     const reqId = ++currentRequestIdRef.current;
 
     try {
-      const refreshedData = await getTrain(targetTrain);
-
-      // Verify request is still the most recent and train hasn't changed
-      if (reqId === currentRequestIdRef.current && activeTrainRef.current === targetTrain) {
-        setTrainData(refreshedData);
-        setLastUpdated(new Date());
-        setTimeAgo('Just now');
-        setRefreshError(null);
+      // Parallel refresh: active train (if selected) + live summary
+      const promises = [getLiveSummary()];
+      if (targetTrain) {
+        promises.push(getTrain(targetTrain));
       }
+
+      const results = await Promise.allSettled(promises);
+      const summaryRes = results[0];
+      const trainRes = results[1];
+
+      if (summaryRes.status === 'fulfilled' && summaryRes.value?.success) {
+        setSummaryData({
+          stats: summaryRes.value.stats || {},
+          trains: summaryRes.value.trains || [],
+          alerts: summaryRes.value.alerts || [],
+        });
+        if (summaryRes.value.alerts) {
+          setAlertCount(summaryRes.value.alerts.length);
+        }
+      }
+
+      if (
+        trainRes &&
+        trainRes.status === 'fulfilled' &&
+        reqId === currentRequestIdRef.current &&
+        activeTrainRef.current === targetTrain
+      ) {
+        setTrainData(trainRes.value);
+      }
+
+      setLastUpdated(new Date());
+      setTimeAgo('Just now');
+      setRefreshError(null);
     } catch (err) {
-      // Gracefully handle refresh failure without clearing existing train data
       if (reqId === currentRequestIdRef.current) {
-        console.warn(`[AutoRefresh] Background update failed for train ${targetTrain}:`, err.message);
-        setRefreshError('Temporary live telemetry update hiccup. Retrying in 30s...');
+        console.warn(`[AutoRefresh] Update hiccup:`, err.message);
+        setRefreshError('Temporary telemetry update hiccup. Retrying in 30s...');
       }
     } finally {
       if (reqId === currentRequestIdRef.current) {
@@ -83,44 +196,35 @@ export const Home = () => {
         setIsRefreshing(false);
       }
     }
-  }, []);
+  }, [setAlertCount]);
 
-  // Set up and clean up automatic polling interval whenever active train changes
+  // Set up 30s polling
   useEffect(() => {
-    // Clear any existing polling timer
     if (pollingTimerRef.current) {
       clearInterval(pollingTimerRef.current);
-      pollingTimerRef.current = null;
     }
 
-    if (!activeTrainNumber) {
-      return;
-    }
-
-    // Initialize recurring 30s interval
     pollingTimerRef.current = setInterval(() => {
       refreshTrainData();
     }, REFRESH_INTERVAL_MS);
 
-    // Cleanup on train change or unmount
     return () => {
       if (pollingTimerRef.current) {
         clearInterval(pollingTimerRef.current);
-        pollingTimerRef.current = null;
       }
     };
-  }, [activeTrainNumber, refreshTrainData]);
+  }, [refreshTrainData]);
 
-  // Explicit manual search execution
-  const executeSearch = async (numToSearch) => {
+  // 5. Execute Train Search / Selection
+  const executeSearch = async (numToSearch, summaryObj = null) => {
     const cleanNumber = String(numToSearch || '').trim();
 
-    // 1. Validation
     if (!cleanNumber) {
       setError('Please enter a train number.');
       setTrainData(null);
       setActiveTrainNumber(null);
       activeTrainRef.current = null;
+      setSelectedSummary(null);
       return;
     }
 
@@ -129,40 +233,43 @@ export const Home = () => {
       setTrainData(null);
       setActiveTrainNumber(null);
       activeTrainRef.current = null;
+      setSelectedSummary(null);
       return;
     }
 
-    // 2. Clear previous polling, errors, and in-flight requests
-    if (pollingTimerRef.current) {
-      clearInterval(pollingTimerRef.current);
-      pollingTimerRef.current = null;
+    // Set selected summary immediately for instant UI feedback
+    if (summaryObj) {
+      setSelectedSummary(summaryObj);
+    } else {
+      const match = summaryData.trains.find((t) => String(t.train_number) === cleanNumber);
+      if (match) setSelectedSummary(match);
     }
 
     const reqId = ++currentRequestIdRef.current;
     activeTrainRef.current = cleanNumber;
+    setActiveTrainNumber(cleanNumber);
+    setTrainNumber(cleanNumber);
     setError(null);
     setRefreshError(null);
     setLoading(true);
 
-    // 3. API execution
     try {
       const data = await getTrain(cleanNumber);
 
       if (reqId === currentRequestIdRef.current) {
         setTrainData(data);
-        setActiveTrainNumber(cleanNumber);
+        setSelectedSummary(null);
         setLastUpdated(new Date());
         setTimeAgo('Just now');
       }
     } catch (err) {
       if (reqId === currentRequestIdRef.current) {
         setTrainData(null);
-        setActiveTrainNumber(null);
-        activeTrainRef.current = null;
 
-        // Clean, user-friendly error formatting (never exposing stack traces, keys, or paths)
         if (!err.response) {
-          setError('Unable to connect to backend server. If using Render free tier, the backend may take up to a minute to wake up.');
+          setError(
+            'Unable to connect to backend server. If using Render free tier, the backend may take up to a minute to wake up.'
+          );
         } else {
           const status = err.response.status;
           const upstreamMsg = err.response.data?.message;
@@ -187,10 +294,41 @@ export const Home = () => {
     }
   };
 
+  const handleTrainSelect = (num, trainObj) => {
+    executeSearch(num, trainObj);
+    if (mapSectionRef.current) {
+      mapSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+
+  const handleInspectDetails = () => {
+    setDeepDetailsExpanded(true);
+    if (deepDetailsRef.current) {
+      deepDetailsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleCenterMap = () => {
+    if (mapSectionRef.current) {
+      mapSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   return (
-    <div className="space-y-6 pb-6">
-      {/* Search Section */}
+    <div className="space-y-6 pb-12">
+      {/* 1. Global Live Status Bar */}
+      <LiveIndicator
+        lastUpdated={lastUpdated}
+        timeAgo={timeAgo}
+        isRefreshing={isRefreshing}
+        refreshError={refreshError}
+        onRefresh={refreshTrainData}
+        telemetrySource={trainData?.telemetry_source || 'live_railradar'}
+      />
+
+      {/* 2. Hero Search Area */}
       <TrainSearch
+        inputRef={searchInputRef}
         trainNumber={trainNumber}
         setTrainNumber={(val) => {
           setTrainNumber(val);
@@ -200,20 +338,31 @@ export const Home = () => {
         loading={loading}
       />
 
-      {/* Loading State Banner */}
+      {/* 3. Dynamic KPI Cards (Active, On Time, Delayed, Cancelled) */}
+      <KpiCards
+        stats={summaryData.stats}
+        activeFilter={tableFilter}
+        onSelectFilter={(filterId) => {
+          setTableFilter(filterId);
+          if (tableSectionRef.current) {
+            tableSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }}
+        loading={summaryLoading}
+      />
+
+      {/* Loading Banner for Train Search */}
       {loading && (
-        <div
-          id="loading-state"
-          className="relative overflow-hidden rounded-[28px] border border-blue-200 bg-gradient-to-br from-white via-blue-50 to-sky-50 p-8 shadow-[0_20px_50px_rgba(59,130,246,0.08)] flex flex-col items-center justify-center text-center space-y-3"
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.12),transparent_35%)]" />
-          <div className="relative w-14 h-14 rounded-full bg-blue-100 ring-8 ring-blue-50 flex items-center justify-center text-blue-600 shadow-lg shadow-blue-200/40">
-            <Loader2 className="w-7 h-7 animate-spin" />
+        <div className="rounded-2xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xs flex flex-col items-center justify-center text-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/80 flex items-center justify-center text-blue-600 dark:text-blue-400">
+            <Loader2 className="w-6 h-6 animate-spin" />
           </div>
-          <div className="relative">
-            <h3 className="text-base font-black text-slate-900">Fetching live train information...</h3>
-            <p className="text-xs text-slate-500 mt-1.5">
-              Querying real-time satellite telemetry and calculating ML delay forecasts
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Fetching live telemetry for train #{activeTrainNumber}...
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Calculating station checkpoints, gradient-boosted ML delay forecasts, and corridor geometry
             </p>
           </div>
         </div>
@@ -221,219 +370,197 @@ export const Home = () => {
 
       {/* Error State Banner */}
       {error && !loading && (
-        <div
-          id="error-state"
-          className="rounded-[24px] border border-red-200 bg-gradient-to-r from-red-50 to-rose-50 p-6 shadow-[0_16px_35px_rgba(239,68,68,0.08)] flex items-start space-x-4"
-        >
-          <div className="w-11 h-11 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+        <div className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50/80 dark:bg-rose-950/40 p-5 shadow-xs flex items-start space-x-3.5">
+          <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
             <AlertCircle className="w-5 h-5" />
           </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-black text-red-900">Unable to fetch train information</h3>
-            <p className="text-xs text-red-700 mt-1.5 leading-relaxed">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Empty State (Before searching) */}
-      {!loading && !trainData && !error && (
-        <div
-          id="empty-state"
-          className="relative overflow-hidden rounded-[30px] border border-sky-100 bg-gradient-to-br from-white via-sky-50/80 to-indigo-50 p-8 sm:p-12 shadow-[0_24px_60px_rgba(37,99,235,0.08)] text-center"
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.12),transparent_35%)]" />
-          <div className="relative">
-            <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center mx-auto text-white mb-5 shadow-lg shadow-blue-500/20 ring-8 ring-blue-100/80">
-              <Train className="w-9 h-9" />
-            </div>
-            <h3 className="text-lg sm:text-xl font-black text-slate-800 tracking-tight">
-              Search for a train to view live status and predicted ETA.
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
-              Enter a 5-digit Indian Railways train number above or pick a sample train to view real-time location, live delays, and machine learning predictions.
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200">
+              Unable to Track Train
+            </h4>
+            <p className="text-xs text-rose-700 dark:text-rose-300 mt-1 leading-relaxed">
+              {error}
             </p>
-
-            {/* Value Props */}
-            <div className="mt-8 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left">
-              <div className="flex items-start space-x-3 p-3 rounded-2xl bg-gradient-to-br from-sky-50 to-white border border-sky-100 shadow-sm">
-                <div className="w-9 h-9 rounded-xl bg-sky-100 flex items-center justify-center shrink-0">
-                  <Compass className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-900">Live GPS Telemetry</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Real-time station checkpoints &amp; speed</div>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3 p-3 rounded-2xl bg-gradient-to-br from-violet-50 to-white border border-violet-100 shadow-sm">
-                <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-indigo-600" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-900">ML Delay Prediction</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Predicts dynamic recovery &amp; congestion</div>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3 p-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 shadow-sm">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-900">Dynamic Station ETA</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Calculated expected arrival for upcoming stops</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Train Dashboard Results (When trainData is present) */}
-      {trainData && !loading && (
-        <div id="train-dashboard" className="space-y-6">
-          {/* Live Telemetry & Auto-Refresh Status Bar */}
-          <div
-            id="live-refresh-bar"
-            className="bg-gradient-to-r from-white via-sky-50/80 to-indigo-50/80 backdrop-blur-sm border border-sky-100 rounded-2xl px-4 py-2.5 shadow-[0_12px_25px_rgba(59,130,246,0.08)] flex flex-wrap items-center justify-between gap-3 text-xs"
-          >
-            <div className="flex items-center space-x-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    isRefreshing ? 'bg-amber-400' : 'bg-emerald-400'
-                  }`}
-                />
-                <span
-                  className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                    isRefreshing ? 'bg-amber-500' : 'bg-emerald-500'
-                  }`}
-                />
-              </span>
-              <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-                <Radio className="w-3.5 h-3.5 text-emerald-600" />
-                {trainData?.telemetry_source === 'live_railradar' ? 'Live Satellite GPS' : 'Real-Time Schedule Tracking'}
-              </span>
-              <span className="hidden sm:inline-block text-slate-300">|</span>
-              <span className="text-slate-500 hidden sm:inline-block">
-                {trainData?.telemetry_source === 'live_railradar' ? 'Connected to RailRadar API' : 'Calculated from Live IST Timetable'}
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-3 ml-auto">
-              {refreshError && (
-                <div className="flex items-center space-x-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{refreshError}</span>
-                </div>
-              )}
-
-              <div className="flex items-center space-x-2 text-slate-600">
-                {isRefreshing ? (
-                  <span className="flex items-center space-x-1.5 text-blue-600 font-medium">
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Updating live data...</span>
-                  </span>
-                ) : (
-                  <span className="text-slate-500">
-                    Last updated:{' '}
-                    <span className="font-semibold text-slate-700 font-mono">
-                      {timeAgo || 'Just now'}
-                    </span>
-                  </span>
-                )}
-              </div>
-
+            <div className="mt-3">
               <button
                 type="button"
-                onClick={refreshTrainData}
-                disabled={isRefreshing}
-                title="Refresh train data now"
-                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                onClick={() => executeSearch('11013')}
+                className="px-3 py-1 rounded-lg text-xs font-semibold bg-rose-200/80 dark:bg-rose-900/80 text-rose-900 dark:text-rose-200 hover:bg-rose-300 transition cursor-pointer"
               >
-                <RefreshCw
-                  className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}
-                />
-                <span className="text-[11px]">Refresh</span>
+                Try sample train 11013 →
               </button>
             </div>
           </div>
-
-          {/* 1. Train Overview Banner */}
-          <TrainOverview trainData={trainData} />
-
-          {/* 2. Primary Status & ML Forecast Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Live Current Status */}
-            <CurrentStatusCard liveStatus={trainData.live_status} />
-
-            {/* ML Prediction */}
-            <PredictionCard
-              prediction={trainData.prediction}
-              liveDelayMinutes={trainData.live_status?.current_delay_minutes}
-            />
-          </div>
-
-          {/* 3. Delay Distinction Highlight Banner */}
-          <div className="bg-gradient-to-r from-sky-50 via-white to-indigo-50 rounded-2xl border border-sky-100 p-4 sm:p-5 shadow-[0_12px_30px_rgba(59,130,246,0.08)] flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center space-x-3 min-w-0">
-              <div className="w-2.5 h-10 rounded-full bg-gradient-to-b from-blue-600 to-indigo-600 hidden sm:block shrink-0" />
-              <div className="min-w-0">
-                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Delay Analysis &amp; Comparison
-                </div>
-                <div className="text-sm text-slate-700 font-medium mt-0.5">
-                  Distinguishing between live ground delay and machine-learning predicted arrival delay
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
-              {/* Current live delay pill */}
-              <div className="px-3.5 py-2 rounded-lg bg-slate-50 border border-slate-200 text-center flex-1 sm:flex-initial">
-                <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  LIVE DELAY
-                </div>
-                <div className="text-base font-bold font-mono text-slate-900 mt-0.5">
-                  {formatDelayDisplay(trainData.live_status?.current_delay_minutes)}
-                </div>
-              </div>
-
-              {/* Arrow or divider */}
-              <span className="text-slate-400 font-bold text-sm hidden sm:inline">vs</span>
-
-              {/* ML predicted delay pill */}
-              <div className="px-3.5 py-2 rounded-lg bg-indigo-50 border border-indigo-200 text-center flex-1 sm:flex-initial">
-                <div className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">
-                  ML PREDICTED DELAY
-                </div>
-                <div className="text-base font-bold font-mono text-indigo-700 mt-0.5">
-                  {formatDelayDisplay(trainData.prediction?.predicted_delay_minutes)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 4. ETA & Delay Variance Visualization */}
-          <ETADelayChart trainData={trainData} />
-
-          {/* 5. Next Station & Destination Corridor Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Next Station Details */}
-            <NextStationCard prediction={trainData.prediction} />
-
-            {/* Destination Details */}
-            <DestinationCard
-              train={trainData.train}
-              prediction={trainData.prediction}
-              route={trainData.route}
-            />
-          </div>
-
-          {/* 6. Live Railway Route Map */}
-          <TrainMap trainData={trainData} loading={loading} />
-
-          {/* 7. Route & Station Timeline */}
-          <RouteTimeline trainData={trainData} />
         </div>
+      )}
+
+      {/* 4. MAIN MAP + SELECTED TRAIN AREA (60/40 Layout) */}
+      <section ref={mapSectionRef} className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+              {trainData ? `Corridor: ${trainData.train?.train_name}` : 'National Corridor Telemetry'}
+            </h2>
+          </div>
+          {trainData && (
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              {trainData.route?.stations?.length || 0} Scheduled Checkpoints
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch min-h-[440px]">
+          {/* LEFT: 60% LIVE MAP */}
+          <div className="lg:col-span-7 xl:col-span-8 flex flex-col min-h-[380px] sm:min-h-[440px]">
+            <TrainMap
+              trainData={trainData}
+              activeTrains={summaryData.trains}
+              onSelectTrain={handleTrainSelect}
+              loading={loading}
+            />
+          </div>
+
+          {/* RIGHT: 40% SELECTED TRAIN PANEL */}
+          <div className="lg:col-span-5 xl:col-span-4 flex flex-col">
+            <SelectedTrainPanel
+              trainData={trainData}
+              selectedSummary={selectedSummary}
+              loading={loading}
+              onInspectDetails={handleInspectDetails}
+              onCenterMap={handleCenterMap}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* 5. LIVE ALERTS & NOTICES */}
+      <section ref={alertsSectionRef}>
+        <AlertsCard
+          alerts={summaryData.alerts}
+          onSelectTrain={(num) => handleTrainSelect(num)}
+        />
+      </section>
+
+      {/* 6. TRAIN LIST / TABLE REDESIGN */}
+      <section ref={tableSectionRef}>
+        <TrainTable
+          trains={summaryData.trains}
+          selectedTrainNumber={activeTrainNumber}
+          onSelectTrain={handleTrainSelect}
+          loading={summaryLoading}
+          activeFilter={tableFilter}
+          onFilterChange={setTableFilter}
+        />
+      </section>
+
+      {/* 7. DEEP-DIVE INTELLIGENCE SECTION (When a train is selected) */}
+      {trainData && !loading && (
+        <section
+          ref={deepDetailsRef}
+          className="pt-6 border-t border-slate-200/90 dark:border-slate-800 space-y-6"
+        >
+          {/* Section Header with Collapse Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                <Layers className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                  Train Intelligence &amp; ML Arrival Predictions
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Detailed timetable variance, upcoming stop forecasts, and station progression
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setDeepDetailsExpanded(!deepDetailsExpanded)}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+            >
+              <span>{deepDetailsExpanded ? 'Collapse' : 'Expand Details'}</span>
+              {deepDetailsExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+
+          {deepDetailsExpanded && (
+            <div className="space-y-6 animate-in fade-in-50 duration-200">
+              {/* Train Overview Banner */}
+              <TrainOverview trainData={trainData} />
+
+              {/* Status & ML Forecast Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <CurrentStatusCard liveStatus={trainData.live_status} />
+                <PredictionCard
+                  prediction={trainData.prediction}
+                  liveDelayMinutes={trainData.live_status?.current_delay_minutes}
+                />
+              </div>
+
+              {/* Delay Distinction Comparison Banner */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center space-x-3 min-w-0">
+                  <div className="w-2.5 h-10 rounded-full bg-gradient-to-b from-blue-600 to-indigo-600 hidden sm:block shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      Ground Telemetry vs Machine Learning Forecast
+                    </div>
+                    <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium mt-0.5">
+                      Ground reality reflects the current recorded delay. ML forecast models dynamic corridor recovery and traffic congestion.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                  {/* Live delay */}
+                  <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-center min-w-[110px]">
+                    <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      LIVE DELAY
+                    </div>
+                    <div className="text-base font-bold font-mono text-slate-900 dark:text-white mt-0.5">
+                      {formatDelayDisplay(trainData.live_status?.current_delay_minutes)}
+                    </div>
+                  </div>
+
+                  <span className="text-slate-400 font-bold text-xs hidden sm:inline">vs</span>
+
+                  {/* ML delay */}
+                  <div className="px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-center min-w-[110px]">
+                    <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                      ML PREDICTED
+                    </div>
+                    <div className="text-base font-bold font-mono text-indigo-700 dark:text-indigo-300 mt-0.5">
+                      {formatDelayDisplay(trainData.prediction?.predicted_delay_minutes)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ETA Delay Progression Chart */}
+              <ETADelayChart trainData={trainData} />
+
+              {/* Next Station & Destination Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <NextStationCard prediction={trainData.prediction} />
+                <DestinationCard
+                  train={trainData.train}
+                  prediction={trainData.prediction}
+                  route={trainData.route}
+                />
+              </div>
+
+              {/* Station Progression Route Timeline */}
+              <RouteTimeline trainData={trainData} />
+            </div>
+          )}
+        </section>
       )}
     </div>
   );

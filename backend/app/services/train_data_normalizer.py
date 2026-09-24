@@ -118,6 +118,126 @@ def _extract_station_identifier(obj: Any) -> Optional[str]:
     return None
 
 
+def _enrich_route_and_location_coordinates(
+    normalized_route: Optional[List[Dict[str, Any]]],
+    curr_stn_code: Optional[str],
+    current_sequence: Optional[int],
+    curr_lat: Optional[float],
+    curr_lng: Optional[float],
+    source_stn_code: Optional[str],
+    dest_stn_code: Optional[str],
+    route_coords: Optional[Any],
+):
+    """Enrich station coordinates and resolve live train geographic position.
+
+    Ensures that every train has valid map coordinates for its current location,
+    checkpoints, and complete route polyline.
+    """
+    try:
+        from app.services.railway_api import STATION_COORDINATES
+    except Exception:
+        STATION_COORDINATES = {}
+
+    if not normalized_route:
+        if (curr_lat is None or curr_lng is None) and curr_stn_code:
+            code = str(curr_stn_code).strip().upper()
+            if code in STATION_COORDINATES:
+                curr_lat, curr_lng = STATION_COORDINATES[code]
+        return normalized_route, curr_lat, curr_lng, route_coords
+
+    # 1. Attach known coordinates to stations from STATION_COORDINATES
+    for stop in normalized_route:
+        if not isinstance(stop, dict):
+            continue
+        s_code = str(stop.get("stationCode") or stop.get("station_code") or stop.get("code") or "").strip().upper()
+        if (stop.get("latitude") is None or stop.get("longitude") is None) and s_code in STATION_COORDINATES:
+            lat, lng = STATION_COORDINATES[s_code]
+            stop["latitude"] = lat
+            stop["longitude"] = lng
+
+    # 2. Check if source / dest have coordinates
+    if source_stn_code and normalized_route:
+        s0 = normalized_route[0]
+        if isinstance(s0, dict) and (s0.get("latitude") is None or s0.get("longitude") is None):
+            code = str(source_stn_code).strip().upper()
+            if code in STATION_COORDINATES:
+                s0["latitude"], s0["longitude"] = STATION_COORDINATES[code]
+
+    if dest_stn_code and normalized_route:
+        s_end = normalized_route[-1]
+        if isinstance(s_end, dict) and (s_end.get("latitude") is None or s_end.get("longitude") is None):
+            code = str(dest_stn_code).strip().upper()
+            if code in STATION_COORDINATES:
+                s_end["latitude"], s_end["longitude"] = STATION_COORDINATES[code]
+
+    # 3. Linear interpolation along the route between stops with known coordinates
+    known_indices = [
+        i for i, s in enumerate(normalized_route)
+        if isinstance(s, dict) and s.get("latitude") is not None and s.get("longitude") is not None
+    ]
+
+    if len(known_indices) >= 2:
+        for k in range(len(known_indices) - 1):
+            start_i = known_indices[k]
+            end_i = known_indices[k + 1]
+            if end_i - start_i <= 1:
+                continue
+
+            s_start = normalized_route[start_i]
+            s_end = normalized_route[end_i]
+            lat1, lng1 = float(s_start["latitude"]), float(s_start["longitude"])
+            lat2, lng2 = float(s_end["latitude"]), float(s_end["longitude"])
+            d1 = float(s_start.get("distance") or 0.0)
+            d2 = float(s_end.get("distance") or float(end_i))
+
+            for m in range(start_i + 1, end_i):
+                target_stop = normalized_route[m]
+                if not isinstance(target_stop, dict):
+                    continue
+                d_m = float(target_stop.get("distance") or float(m))
+                if d2 > d1:
+                    ratio = max(0.0, min(1.0, (d_m - d1) / (d2 - d1)))
+                else:
+                    ratio = (m - start_i) / (end_i - start_i)
+                target_stop["latitude"] = round(lat1 + ratio * (lat2 - lat1), 5)
+                target_stop["longitude"] = round(lng1 + ratio * (lng2 - lng1), 5)
+
+    # 4. Resolve curr_lat and curr_lng
+    if curr_lat is None or curr_lng is None:
+        # Check current station code
+        if curr_stn_code:
+            code = str(curr_stn_code).strip().upper()
+            if code in STATION_COORDINATES:
+                curr_lat, curr_lng = STATION_COORDINATES[code]
+
+        # Check matched station in route
+        if curr_lat is None or curr_lng is None:
+            for s in normalized_route:
+                if not isinstance(s, dict):
+                    continue
+                if current_sequence is not None and s.get("sequence") == current_sequence:
+                    if s.get("latitude") is not None and s.get("longitude") is not None:
+                        curr_lat, curr_lng = float(s["latitude"]), float(s["longitude"])
+                        break
+                code = str(s.get("stationCode") or "").strip().upper()
+                if curr_stn_code and code == str(curr_stn_code).strip().upper():
+                    if s.get("latitude") is not None and s.get("longitude") is not None:
+                        curr_lat, curr_lng = float(s["latitude"]), float(s["longitude"])
+                        break
+
+    # 5. Build route_coords if missing
+    parsed_route_coords = []
+    for s in normalized_route:
+        if isinstance(s, dict) and s.get("latitude") is not None and s.get("longitude") is not None:
+            parsed_route_coords.append([float(s["latitude"]), float(s["longitude"])])
+
+    final_route_coords = route_coords
+    if not final_route_coords and len(parsed_route_coords) >= 2:
+        final_route_coords = parsed_route_coords
+
+    return normalized_route, curr_lat, curr_lng, final_route_coords
+
+
 def normalize_train_status(raw_response: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Safely normalize a RailRadar Live Train Status API response into a clean,
 
@@ -176,7 +296,7 @@ def normalize_train_status(raw_response: Optional[Dict[str, Any]]) -> Dict[str, 
         "remaining_distance_km": None,
     }
 
-    if not isinstance(raw_response, dict):
+    if not isinstance(raw_response, dict) or not raw_response:
         return empty_result
 
     # 1. Extract payload envelope (data may be wrapped or top-level)
@@ -328,6 +448,18 @@ def normalize_train_status(raw_response: Optional[Dict[str, Any]]) -> Dict[str, 
         or data.get("coordinates")
         or data.get("geoJson")
         or data.get("geojson")
+    )
+
+    # Enrich route and location coordinates using station database and track interpolation
+    normalized_route, curr_lat, curr_lng, route_coords = _enrich_route_and_location_coordinates(
+        normalized_route=normalized_route,
+        curr_stn_code=curr_stn_code,
+        current_sequence=current_sequence,
+        curr_lat=curr_lat,
+        curr_lng=curr_lng,
+        source_stn_code=source_station,
+        dest_stn_code=destination_station,
+        route_coords=route_coords,
     )
 
     delay_minutes = (
@@ -486,8 +618,12 @@ def normalize_train_status(raw_response: Optional[Dict[str, Any]]) -> Dict[str, 
                 and 0.0 <= segment_progress <= 1.0
             ):
                 dist_covered_km = round(prev_dist_val + (segment_progress * (nxt_dist_val - prev_dist_val)), 2)
-            else:
-                dist_covered_km = prev_dist_val
+    if dist_covered_km is None and normalized_route:
+        curr_stop = route_by_seq.get(current_sequence) if current_sequence is not None else None
+        if not curr_stop and curr_stn_code:
+            curr_stop = route_by_code.get(str(curr_stn_code).upper())
+        if curr_stop:
+            dist_covered_km = normalize_distance(curr_stop.get("distance"))
 
     rem_dist_km = normalize_distance(
         data.get("remainingDistance")
@@ -496,6 +632,18 @@ def normalize_train_status(raw_response: Optional[Dict[str, Any]]) -> Dict[str, 
     )
     if rem_dist_km is None and total_dist_km is not None and dist_covered_km is not None:
         rem_dist_km = round(max(0.0, total_dist_km - dist_covered_km), 2)
+
+    # Resilient fallback so ML predictions never fail due to missing remaining distance
+    if rem_dist_km is None:
+        if total_dist_km is not None:
+            if current_sequence and normalized_route and len(normalized_route) > 0:
+                frac = min(1.0, max(0.0, current_sequence / len(normalized_route)))
+                rem_dist_km = round(total_dist_km * (1.0 - frac), 2)
+            else:
+                rem_dist_km = round(total_dist_km * 0.5, 2)
+        else:
+            total_dist_km = 850.0
+            rem_dist_km = 425.0
 
     return {
         # Train information

@@ -446,6 +446,16 @@ class RailwayAPIService:
         if matched is None:
             train_name_value = f"{train_name_value} (Demo)"
 
+        # Realistic simulated delay variation per train if live API key is not active
+        train_seed = sum(ord(c) for c in clean_number)
+        raw_seed = (train_seed * 11) % 40
+        if raw_seed % 3 == 0:
+            simulated_delay = 0
+        elif raw_seed % 3 == 1:
+            simulated_delay = raw_seed % 5
+        else:
+            simulated_delay = 10 + (raw_seed % 25)
+
         return {
             "success": True,
             "data": {
@@ -453,7 +463,7 @@ class RailwayAPIService:
                 "trainName": train_name_value,
                 "startDate": now_ist.strftime("%Y-%m-%d"),
                 "status": current_status,
-                "delayMinutes": 8,
+                "delayMinutes": simulated_delay,
                 "latitude": train_lat,
                 "longitude": train_lng,
                 "routeCoordinates": route_coords if len(route_coords) >= 2 else None,
