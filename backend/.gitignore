@@ -1,0 +1,32 @@
+# Environment variables
+.env
+.env.*
+*.env
+!.env.example
+
+# Python bytecode & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE / Editor folders
+.vscode/
+.idea/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# Runtime generated training/collector data
+data/live_train_data/*.jsonl
+!data/live_train_data/.gitkeep

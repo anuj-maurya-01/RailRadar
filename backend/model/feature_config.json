@@ -1,0 +1,36 @@
+{
+    "target_column": "average_delay_minutes",
+    "categorical_features": [
+        "train_number",
+        "train_type",
+        "station_code"
+    ],
+    "numerical_features": [
+        "sno",
+        "day",
+        "distance_km",
+        "arrival_minutes",
+        "departure_minutes",
+        "next_arrival_minutes",
+        "scheduled_travel_time",
+        "remaining_distance_km",
+        "scheduled_remaining_time"
+    ],
+    "all_features": [
+        "train_number",
+        "train_type",
+        "station_code",
+        "sno",
+        "day",
+        "distance_km",
+        "arrival_minutes",
+        "departure_minutes",
+        "next_arrival_minutes",
+        "scheduled_travel_time",
+        "remaining_distance_km",
+        "scheduled_remaining_time"
+    ],
+    "model_type": "HistGradientBoostingRegressor",
+    "training_rows": 1324,
+    "encoded_features": 475
+}
