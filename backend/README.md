@@ -1,70 +1,86 @@
-# Dynamic Railway ETA Prediction System — Backend
+# 🚆 Rail Radar — Backend Service
 
-Backend service for the **Dynamic Railway ETA Prediction System**, providing real-time railway data processing, feature engineering, and machine learning inference for dynamic arrival predictions.
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.4+-F7931E?style=flat-square&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
+[![Tests](https://img.shields.io/badge/Tests-59%20Passing-brightgreen?style=flat-square&logo=pytest&logoColor=white)](tests/)
 
-## Tech Stack
+Backend service for **Rail Radar** ("Live Indian Railway Intelligence"), providing real-time railway data processing, station coordinate interpolation, 12-feature ML feature engineering, dynamic delay forecasting, and fallback to the 8,490-train dataset.
 
-- **Python 3.11+**
-- **FastAPI**: Modern, high-performance web framework for building APIs.
-- **Uvicorn**: Lightning-fast ASGI server implementation.
-- **HTTPX**: Asynchronous HTTP client for external railway API communication.
-- **NumPy & Pandas**: Numerical computing and tabular data manipulation.
-- **Scikit-learn & Joblib**: Machine learning inference and model persistence.
-- **python-dotenv**: Environment variable management.
-- **APScheduler**: Periodic background scheduling for live train data collection.
+---
 
-## Project Structure
+## 🛠️ Tech Stack
+
+- **FastAPI**: High-performance, async Python web framework with auto-generated OpenAPI/Swagger docs.
+- **Uvicorn**: Production-grade ASGI server implementation.
+- **HTTPX**: High-concurrency async HTTP client for external telemetry communication.
+- **Scikit-learn & Joblib**: Pre-trained `HistGradientBoostingRegressor` and `OneHotEncoder` model inference.
+- **NumPy & Pandas**: Vectorized mathematics, station sequence handling, and feature table transformations.
+- **APScheduler**: Periodic background telemetry harvester with JSONL persistence.
+- **python-dotenv**: Environment configuration management.
+
+---
+
+## 📁 Project Structure
 
 ```text
 backend/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py                     # FastAPI application entry point, lifespan & CORS
-│   ├── config.py                   # Environment configuration & path constants
 │   ├── api/
-│   │   ├── __init__.py
-│   │   └── train_routes.py         # Production route GET /api/train/{train_number}
-│   └── services/
-│       ├── __init__.py
-│       ├── railway_api.py          # RailRadar Live Train API client (Bearer auth)
-│       ├── train_data_normalizer.py# Raw payload normalization layer
-│       ├── feature_builder.py      # 12 ML features construction & validation
-│       ├── eta_predictor.py        # HistGradientBoostingRegressor inference service
-│       ├── eta_calculator.py       # Next station & destination ETA calculations
-│       ├── data_collector.py       # Live data enrichment & JSONL persistence
-│       └── collection_scheduler.py # Background periodic scheduler (APScheduler)
-├── model/
-│   ├── eta_model.pkl               # Trained HistGradientBoostingRegressor (Read-only)
-│   ├── eta_encoder.pkl             # Trained OneHotEncoder for 3 categoricals (Read-only)
-│   └── feature_config.json         # Schema configuration for 12 features (Read-only)
+│   │   └── train_routes.py         # Endpoints: /live-summary, /search-suggestions, /train/{number}
+│   ├── services/
+│   │   ├── railway_api.py          # RailRadar live API client with 8,490 offline dataset fallback
+│   │   ├── train_data_normalizer.py# Schema normalization & coordinate interpolation
+│   │   ├── feature_builder.py      # 12-feature ML input vector construction
+│   │   ├── eta_predictor.py        # HistGradientBoostingRegressor inference service
+│   │   ├── eta_calculator.py       # Next stop & destination ETA calculation
+│   │   ├── data_collector.py       # Live telemetry enrichment & JSONL persistence
+│   │   └── collection_scheduler.py # Background scheduler (APScheduler)
+│   ├── config.py                   # Configuration parameters and defaults
+│   └── main.py                     # FastAPI application setup, CORS & lifespan
+├── model/                          # Machine learning deployment artifacts (Read-only)
+│   ├── eta_model.pkl               # Pre-trained gradient boosted regression model
+│   ├── eta_encoder.pkl             # Pre-fitted OneHotEncoder
+│   └── feature_config.json         # 12-feature schema definition
 ├── data/
-│   └── live_train_data/            # Local JSONL storage for train observations
-│       ├── .gitkeep
-│       └── train_11013.jsonl
-├── tests/                          # Automated test suite (58 unit/integration tests)
-├── .env                            # Environment variables (git-ignored)
-├── .gitignore                      # Git ignore configuration
+│   └── live_train_data/            # JSONL logs recorded by background scheduler
+├── tests/                          # Automated test suite (59 passing tests)
 ├── requirements.txt                # Production requirements
-└── README.md                       # Documentation
+└── .env.example                    # Environment configuration template
 ```
 
-## Getting Started
+---
+
+## 🚀 Getting Started
 
 ### 1. Prerequisites
+- Python 3.11, 3.12, or 3.13.
 
-- Python 3.11+ installed and available on PATH.
-
-### 2. Installation
-
-Install all required Python packages:
+### 2. Environment Setup
 
 ```bash
+# Navigate to backend directory
+cd backend
+
+# Create and activate virtual environment
+# Windows:
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# Linux / macOS:
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Environment Configuration
+### 3. Configure Environment
 
-The `.env` file at the root of `backend/` contains configuration variables:
+Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
 
 ```env
 RAILRADAR_API_KEY=your_railradar_api_key_here
@@ -75,26 +91,36 @@ TRACKED_TRAIN_NUMBERS=11013,11014
 COLLECTION_INTERVAL_MINUTES=15
 ```
 
-> **Security Note**: Never commit `.env` to source control. API keys and Bearer tokens are kept strictly internal and are never returned to the frontend or written to logs/JSONL.
+> **Resilient Fallback**: If `RAILRADAR_API_KEY` is not provided or if the upstream API triggers an HTTP 429 rate limit, the service automatically falls back to the bundled 8,490-train dataset (`Dataset_1`).
 
-### 4. Running the Development Server
-
-From the `backend` directory, run:
+### 4. Run Development Server
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
-The API will be available at `http://127.0.0.1:8000`.
+- API Base: `http://127.0.0.1:8000`
+- Interactive Swagger UI: `http://127.0.0.1:8000/docs`
+- Health Check: `http://127.0.0.1:8000/api/health`
 
-Interactive documentation:
-- Swagger UI: `http://127.0.0.1:8000/docs`
-- OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
+---
 
-### 5. Key API Endpoints
+## 📡 Key API Endpoints
 
-- **`GET /api/health`**: Service health check.
-- **`GET /api/train/{train_number}`**: Primary user-facing endpoint returning live status, 12-feature ML predicted delay, next station ETA, and destination ETA.
-- **`GET /api/collection/status`**: Periodic data collection scheduler monitoring.
-- **`POST /api/test/collect/{train_number}`**: (Debug) Manually trigger collection of one train observation.
-- **`GET /api/test/data/{train_number}`**: (Debug) Preview recent saved observations from JSONL storage.
+| Method | Route | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/trains/live-summary` | Live network KPIs, active train list, and delay alerts |
+| `GET` | `/api/trains/search-suggestions?q={query}` | Instant autocomplete across 8,490 trains |
+| `GET` | `/api/train/{train_number}` | Real-time telemetry, route coordinates, and ML dynamic ETA |
+| `GET` | `/api/health` | Service health status |
+| `GET` | `/api/collection/status` | Background scheduler status |
+
+---
+
+## 🧪 Running Automated Tests
+
+```bash
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+All 59 unit and integration tests verify data normalization, feature builder edge cases, coordinate interpolation, and rate limit handling.
