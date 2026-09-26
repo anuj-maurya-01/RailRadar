@@ -305,12 +305,12 @@ npm run build
 
 ## 👥 Team Members
 
-| Name | Role | Core Contributions | Profile |
+| Name | Role | Core Contributions | Contact & Profile |
 | :--- | :--- | :--- | :--- |
-| **Aru Shubham Singh** | ML / ETA Prediction | `HistGradientBoostingRegressor` model optimization, 12-feature schema engineering, and dynamic delay forecast inference | — |
-| **Archita Kesharwani** | Backend / Real-Time Engine | FastAPI async REST architecture, live RailRadar telemetry integration, failover fallback engine, and automated test suite | — |
 | **Anuj Maurya** | Frontend / Map & Dashboard | React 19 dashboard architecture, Leaflet route mapping engine, pulsing locomotive telemetry, and responsive UI components | [![GitHub](https://img.shields.io/badge/GitHub-anuj--maurya--01-181717?style=flat-square&logo=github)](https://github.com/anuj-maurya-01) [![Email](https://img.shields.io/badge/Email-anujmaurya0104%40gmail.com-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:anujmaurya0104@gmail.com) |
-| **Shlok Bhardwaj** | Data Analytics & Research / Intelligence | Railway operational delay analytics, historical station dwell research, live KPI calculations, and alert threshold logic | — |
+| **Archita Kesharwani** | Backend / Real-Time Engine | FastAPI async REST architecture, live RailRadar telemetry integration, failover fallback engine, and automated test suite | [![Email](https://img.shields.io/badge/Email-architakesharwani%40gmail.com-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:architakesharwani@gmail.com) |
+| **Aru Shubham Singh** | ML / ETA Prediction | `HistGradientBoostingRegressor` model optimization, 12-feature schema engineering, and dynamic delay forecast inference | [![Email](https://img.shields.io/badge/Email-ashubham701080%40gmail.com-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:ashubham701080@gmail.com) |
+| **Shlok Bhardwaj** | Data Analytics & Research / Intelligence | Railway operational delay analytics, historical station dwell research, live KPI calculations, and alert threshold logic | [![Email](https://img.shields.io/badge/Email-shlokbhardwaj80%40gmail.com-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:shlokbhardwaj80@gmail.com) |
 
 > *Built with passion during the hackathon to make railway travel transparent, predictable, and stress-free for millions of daily commuters.*
 
