@@ -1213,13 +1213,5 @@ def create_presentation_deck(output_path="YatriRail_Presentation_Deck.pdf"):
     c.save()
     print(f"Presentation deck successfully generated at: {output_path}")
 
-    # Also mirror to RailRadar_Presentation_Deck.pdf for backward compatibility
-    import shutil
-    try:
-        shutil.copyfile(output_path, "RailRadar_Presentation_Deck.pdf")
-        print("Mirrored to RailRadar_Presentation_Deck.pdf")
-    except Exception:
-        pass
-
 if __name__ == "__main__":
     create_presentation_deck()

@@ -24,3 +24,9 @@ yarn-debug.log*
 # Runtime generated data
 backend/data/live_train_data/*.jsonl
 !backend/data/live_train_data/.gitkeep
+
+# Archives & Temporary files
+*.zip
+*.tar.gz
+*.csv
+.streamlit/
