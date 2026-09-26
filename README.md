@@ -13,7 +13,7 @@
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9+-199900?style=for-the-badge&logo=leaflet&logoColor=white)](https://leafletjs.com/)
 [![Tests](https://img.shields.io/badge/Tests-59%20Passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
-[![Presentation Deck](https://img.shields.io/badge/Presentation_Deck-PDF_(10_Slides)-E11D48?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](YatriRail_Presentation_Deck.pdf)
+[![Presentation Deck](https://img.shields.io/badge/Presentation_Deck-PDF-E11D48?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](KT-2159_Hackathon%20Software_Deck.pdf)
 
 <br/>
 
@@ -30,7 +30,7 @@
 | Field | Details |
 | :--- | :--- |
 | **Project Name** | **YatriRail** — Live Indian Railway Intelligence |
-| **Presentation Deck** | 📊 [YatriRail_Presentation_Deck.pdf](YatriRail_Presentation_Deck.pdf) (10 Widescreen Slides, PDF) |
+| **Presentation Deck** | 📊 [KT-2159_Hackathon Software_Deck.pdf](KT-2159_Hackathon%20Software_Deck.pdf) (Hackathon Presentation Deck, PDF) |
 | **Public GitHub Repo** | [https://github.com/anuj-maurya-01/YatriRail](https://github.com/anuj-maurya-01/YatriRail) |
 | **Domain / Track** | Smart Mobility, Public Transportation Intelligence & Applied Machine Learning |
 | **Core Problem** | Static train tracking schedules only display outdated timetable times or extrapolate delays from a single checkpoint, failing to account for network congestion, station dwell times, and speed dynamics. |
