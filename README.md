@@ -19,7 +19,7 @@
 
 **YatriRail** is an enterprise-grade railway intelligence platform that unifies real-time GPS telemetry, timetable schedules, historical delay patterns, and trained gradient-boosted decision trees to predict arrival and departure times across Indian Railways stations.
 
-[Overview](#-overview) • [Presentation Deck (PDF)](#-KT-2159_Hackathon Software_Deck.pdf) • [Tech Stack](#-tech-stack) • [Key Features](#-key-features) • [Architecture](#-system-architecture) • [ML Pipeline](#-machine-learning-pipeline) • [Setup Steps](#-setup-steps--quick-start) • [Team](#-team-members) • [Deployment](#-cloud-deployment)
+[Overview](#-overview) • [📊 Presentation Deck (PDF)](./KT-2159_Hackathon%20Software_Deck.pdf) • [Tech Stack](#-tech-stack) • [Key Features](#-key-features) • [Architecture](#-system-architecture) • [ML Pipeline](#-machine-learning-pipeline) • [Setup Steps](#-setup-steps--quick-start) • [Team](#-team-members) • [Deployment](#-cloud-deployment)
 
 </div>
 
