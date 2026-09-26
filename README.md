@@ -18,9 +18,51 @@
 
 **Rail Radar** is an enterprise-grade railway intelligence platform that unifies real-time GPS telemetry, timetable schedules, historical delay patterns, and trained gradient-boosted decision trees to predict arrival and departure times across Indian Railways stations.
 
-[Features](#-key-features) • [Architecture](#-system-architecture) • [ML Pipeline](#-machine-learning-pipeline) • [API Reference](#-api-endpoints) • [Quick Start](#-quick-start) • [Deployment](#-cloud-deployment)
+[Overview](#-overview) • [Tech Stack](#-tech-stack) • [Key Features](#-key-features) • [Architecture](#-system-architecture) • [ML Pipeline](#-machine-learning-pipeline) • [Setup Steps](#-setup-steps--quick-start) • [Team](#-team-members) • [Deployment](#-cloud-deployment)
 
 </div>
+
+---
+
+## 🏆 Hackathon Project Summary
+
+| Field | Details |
+| :--- | :--- |
+| **Project Name** | **Rail Radar** — Live Indian Railway Intelligence |
+| **Public GitHub Repo** | [https://github.com/anuj-maurya-01/RailRadar](https://github.com/anuj-maurya-01/RailRadar) |
+| **Domain / Track** | Smart Mobility, Public Transportation Intelligence & Applied Machine Learning |
+| **Core Problem** | Static train tracking schedules only display outdated timetable times or extrapolate delays from a single checkpoint, failing to account for network congestion, station dwell times, and speed dynamics. |
+| **Solution** | A full-stack real-time situational dashboard combining live GPS telemetry with a 12-feature `HistGradientBoostingRegressor` ML model to compute dynamic, station-by-station arrival forecasts across 8,490+ trains. |
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend Application
+- **React 19**: Ultra-responsive UI rendering with concurrent capabilities and modern hooks.
+- **Vite 8**: Ultra-fast next-generation development server and production bundler.
+- **Tailwind CSS v4**: High-performance modern utility styling engineered for data-rich transportation dashboards.
+- **Leaflet & React-Leaflet**: Hardware-accelerated map rendering with custom SVG locomotive markers, station stop rings, and route polylines.
+- **Lucide React**: Clean, accessible vector icons for transport telemetry.
+- **Axios**: Promised-based HTTP client pre-configured with proxy endpoints and fallback handlers.
+
+### Backend & API Proxy
+- **FastAPI 0.110+**: Asynchronous, high-throughput Python API engine with automatic OpenAPI / Swagger specifications.
+- **Uvicorn**: Lightning-fast ASGI production web server.
+- **HTTPX**: Async HTTP client for low-latency live telemetry querying.
+- **APScheduler**: Periodic background telemetry harvester with non-blocking execution.
+- **Pydantic & Python-dotenv**: Type-safe data validation and secure environment variable handling.
+
+### Machine Learning & Data Pipeline
+- **Scikit-learn**: `HistGradientBoostingRegressor` for non-linear delay prediction and `OneHotEncoder` for categoricals.
+- **NumPy & Pandas**: Matrix feature vector transformations and station progress calculations.
+- **Joblib**: Zero-latency serialization and loading of pre-trained model artifacts.
+- **Bundled Offline Database**: 8,490 Indian Railways train records (`Dataset_1`) providing zero-downtime failover during upstream rate limits.
+
+### DevOps & Cloud Infrastructure
+- **Render**: Backend API Web Service configured via 1-click [`render.yaml`](render.yaml) Blueprint.
+- **Vercel**: Edge-optimized static frontend hosting with client-side SPA routing (`frontend/vercel.json`).
+- **Git & GitHub**: Version control, automated release tracking, and open-source collaboration.
 
 ---
 
@@ -37,7 +79,7 @@ $$\text{Live Telemetry} + \text{Route Schedules} + \text{Gradient Boosted ML} \l
 ## ✨ Key Features
 
 ### 📡 Real-Time Railway Intelligence
-- **Live Operational KPIs**: Instant visual telemetry summarizing Active Trains, On-Time performance, Delays, and Cancellations across the network.
+- **Live Operational KPIs**: Instant visual telemetry summarizing Active Trains, On-Time performance, Delays, and Cancellations across the network with clickable quick-filtering.
 - **Active Delay Alerts**: Real-time monitoring of significant delay spikes (&ge; 10 min warnings, &ge; 25 min critical alerts) with train details and current station positions.
 - **Non-Blocking Background Refresh**: Automatic 30-second live polling with relative timestamp indicators and manual re-fetch triggers.
 
@@ -147,116 +189,39 @@ Interactive Swagger documentation is available at `http://127.0.0.1:8000/docs` w
 | `GET` | `/api/trains/{train_number}` | Alias for `/api/train/{train_number}` | `train_number` (5-digit string) |
 | `GET` | `/api/health` | Health check endpoint for uptime monitors and deployment probes | _None_ |
 
-### Example Response: `/api/trains/live-summary`
-```json
-{
-  "success": true,
-  "last_updated": "16:45:10 IST",
-  "stats": {
-    "active_trains": 12,
-    "on_time": 9,
-    "delayed": 3,
-    "cancelled": 0,
-    "total_tracked": 12
-  },
-  "trains": [
-    {
-      "train_number": "11013",
-      "train_name": "LTT CBE EXPRESS",
-      "source": "LOKMANYATILAK T",
-      "destination": "COIMBATORE JN",
-      "current_station_name": "PUNE JN",
-      "next_station_name": "DAUND JN",
-      "delay_minutes": 15,
-      "status": "delayed",
-      "speed_kmh": 68.5,
-      "latitude": 18.5289,
-      "longitude": 73.8744
-    }
-  ],
-  "alerts": [
-    {
-      "id": "alert-11013",
-      "train_number": "11013",
-      "train_name": "LTT CBE EXPRESS",
-      "delay_minutes": 15,
-      "severity": "warning",
-      "message": "Train 11013 (LTT CBE EXPRESS) running 15m behind schedule near PUNE JN."
-    }
-  ]
-}
-```
-
 ---
 
-## 📁 Repository Structure
+## 🚀 Setup Steps & Quick Start
 
-```text
-rail-radar/
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   │   └── train_routes.py            # API Endpoints (summary, search, dynamic ETA)
-│   │   ├── services/
-│   │   │   ├── railway_api.py             # RailRadar API client + 8,490 dataset fallback
-│   │   │   ├── train_data_normalizer.py   # Station normalization & coordinate interpolation
-│   │   │   ├── feature_builder.py         # 12-feature ML input vector generator
-│   │   │   ├── eta_predictor.py           # HistGradientBoostingRegressor inference service
-│   │   │   ├── eta_calculator.py          # Expected arrival & departure calculator
-│   │   │   ├── data_collector.py          # Observation recorder (JSONL format)
-│   │   │   └── collection_scheduler.py    # Background periodic scheduler (APScheduler)
-│   │   ├── config.py                      # Environment configuration & constants
-│   │   └── main.py                        # FastAPI application setup, CORS, and lifecycle
-│   ├── model/                             # Machine learning artifacts (Read-only)
-│   │   ├── eta_model.pkl                  # Trained scikit-learn model
-│   │   ├── eta_encoder.pkl                # Pre-fitted OneHotEncoder
-│   │   └── feature_config.json            # 12-feature schema definition
-│   ├── tests/                             # Comprehensive automated test suite (59 tests)
-│   ├── requirements.txt                   # Backend Python dependencies
-│   └── .env.example                       # Backend environment template
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── KpiCards.jsx               # Real-time operational metric counters
-│   │   │   ├── LiveIndicator.jsx          # Live pulsating indicator with refresh timer
-│   │   │   ├── TrainMap.jsx               # Interactive Leaflet map with pulsing locomotive
-│   │   │   ├── SelectedTrainPanel.jsx     # Active train telemetry, delay badge & ML forecast
-│   │   │   ├── AlertsCard.jsx             # High-severity delay alert banner
-│   │   │   ├── TrainTable.jsx             # Station operations table (search, sort, filter)
-│   │   │   ├── RouteTimeline.jsx          # Bounded route timeline with auto-scroll
-│   │   │   └── ETADelayChart.jsx          # Delay distribution visualization
-│   │   ├── pages/
-│   │   │   └── Home.jsx                   # Main 60/40 intelligence dashboard page
-│   │   ├── services/
-│   │   │   └── apiClient.js               # Axios client with fallback endpoints
-│   │   ├── utils/
-│   │   │   └── formatters.js              # Time, speed, and delay formatting utilities
-│   │   ├── App.jsx                        # App shell and theme provider
-│   │   └── main.jsx                       # Entry point
-│   ├── package.json                       # Frontend dependencies & scripts
-│   ├── vite.config.js                     # Vite build & dev-proxy configuration
-│   └── .env.example                       # Frontend environment template
-├── Dataset_1/                             # Bundled offline database (8,490 train records)
-├── render.yaml                            # 1-Click Render Blueprint configuration
-├── DEPLOYMENT.md                          # Production Cloud Deployment Guide
-└── README.md                              # Project documentation
-```
+Follow these steps to run the complete Rail Radar system locally from source code.
 
----
-
-## 🚀 Quick Start
-
-### Prerequisites
+### 📋 Prerequisites
 - **Python**: `3.11`, `3.12`, or `3.13`
 - **Node.js**: `18.x`, `20.x`, or `22.x` (with `npm`)
+- **Git**
 
-### 1. Backend Setup
+### ⚡ 1-Click Launch (Windows)
+If you are on Windows, double-click [`start.bat`](start.bat) or run from PowerShell:
+```powershell
+.\start.bat
+```
+This automatically boots both the FastAPI backend on port `8000` and the React frontend on port `5173`.
 
+---
+
+### 🔧 Manual Step-by-Step Setup
+
+#### Step 1: Clone the Repository
 ```bash
-# Navigate to the backend directory
+git clone https://github.com/anuj-maurya-01/RailRadar.git
+cd RailRadar
+```
+
+#### Step 2: Backend Setup
+```bash
 cd backend
 
-# Create and activate a virtual environment
+# Create and activate a Python virtual environment
 # Windows (PowerShell):
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -268,11 +233,11 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Create your local environment configuration
+# Configure environment variables
 cp .env.example .env
 ```
 
-Edit `backend/.env` as needed:
+Configure `backend/.env`:
 ```env
 RAILRADAR_API_KEY=your_railradar_api_key_here
 RAILRADAR_API_BASE_URL=https://api.railradar.in
@@ -282,26 +247,24 @@ TRACKED_TRAIN_NUMBERS=11013,11014
 COLLECTION_INTERVAL_MINUTES=15
 ```
 
-> **Note**: If you do not have a RailRadar API key or hit rate limits, the system automatically falls back to the bundled 8,490-train dataset in `Dataset_1/`.
+> **Note**: Even without an external API key, the backend automatically uses the bundled 8,490-train database in `Dataset_1/` with zero configuration.
 
-Start the backend development server:
+Start the backend:
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
-- API will be accessible at: `http://127.0.0.1:8000`
-- Swagger Documentation: `http://127.0.0.1:8000/docs`
+- API Base URL: `http://127.0.0.1:8000`
+- Swagger UI Documentation: `http://127.0.0.1:8000/docs`
 
-### 2. Frontend Setup
-
+#### Step 3: Frontend Setup
 In a new terminal window:
 ```bash
-# Navigate to the frontend directory
 cd frontend
 
-# Install Node dependencies
+# Install Node modules
 npm install
 
-# Create your local environment configuration
+# Configure environment variables
 cp .env.example .env
 ```
 
@@ -310,7 +273,7 @@ Ensure `frontend/.env` contains:
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-Start the Vite development server:
+Start the Vite dev server:
 ```bash
 npm run dev
 ```
@@ -318,65 +281,59 @@ npm run dev
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## 🧪 Testing & Verification
 
-The backend features a comprehensive automated test suite covering API routing, normalization logic, ML feature vector assembly, coordinate interpolation, and rate-limit fallbacks:
-
+Run the automated backend test suite (59 unit and integration tests):
 ```bash
-# From the backend directory:
+cd backend
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
-Output:
+Expected output:
 ```text
 Ran 59 tests in 1.91s
 OK
 ```
 
-To verify the frontend production build:
+Verify frontend production build:
 ```bash
-# From the frontend directory:
+cd frontend
 npm run build
 ```
 
 ---
 
+## 👥 Team Members
+
+| Name | Role | Responsibilities | Profile |
+| :--- | :--- | :--- | :--- |
+| **Anuj Maurya** | Lead Full-Stack & ML Engineer | Project Architecture, FastAPI Backend Proxy, React 19 Frontend, Leaflet Route Mapping, Scikit-learn ETA Pipeline | [![GitHub](https://img.shields.io/badge/GitHub-anuj--maurya--01-181717?style=flat-square&logo=github)](https://github.com/anuj-maurya-01) [![Email](https://img.shields.io/badge/Email-anujmaurya0104%40gmail.com-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:anujmaurya0104@gmail.com) |
+
+> *Built with passion during the hackathon to make railway travel transparent, predictable, and stress-free for millions of daily commuters.*
+
+---
+
 ## ☁️ Cloud Deployment
 
-Rail Radar is architected for zero-configuration modern cloud hosting:
-- **Backend API**: Hosted on [Render](https://render.com) using the included [`render.yaml`](render.yaml) Blueprint or as a manual Python Web Service.
+Rail Radar is ready for production cloud deployment:
+- **Backend API**: Hosted on [Render](https://render.com) using [`render.yaml`](render.yaml) or a manual Python Web Service.
 - **Frontend Dashboard**: Hosted on [Vercel](https://vercel.com) using [`frontend/vercel.json`](frontend/vercel.json).
 
-### Quick Deployment Checklist
-
-1. **Deploy Backend to Render**:
-   - Connect your GitHub repository to Render as a **Blueprint** (reads [`render.yaml`](render.yaml)) or create a **Python Web Service** with root directory `backend`.
-   - Set Build Command: `pip install --upgrade pip && pip install -r requirements.txt`.
-   - Set Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
-   - Add environment variable `PYTHON_VERSION=3.11.9`.
-   - Health check path: `/api/health`.
-
-2. **Deploy Frontend to Vercel**:
-   - Import your repository on Vercel.
-   - Set **Root Directory** to `frontend`.
-   - Framework preset: `Vite`.
-   - Set Environment Variable: `VITE_API_BASE_URL=https://your-backend.onrender.com`.
-
-For step-by-step instructions with custom domains, CORS configuration, and troubleshooting, read the full [Production Deployment Guide](DEPLOYMENT.md).
+For full step-by-step instructions, see the [Production Deployment Guide](DEPLOYMENT.md).
 
 ---
 
 ## 🔒 Security & Privacy
 
-- **Protected API Credentials**: Third-party API keys are strictly maintained within server-side environment variables and are never bundled into client assets or output in logs.
+- **Protected API Credentials**: Third-party API keys are strictly kept within server-side environment variables and are never bundled into client assets or exposed in logs.
 - **Strict CORS Control**: Cross-Origin Resource Sharing is configured to allow only authorized frontend origins (`localhost` in development, verified domains in production).
-- **Graceful Fault Tolerance**: Upstream HTTP errors, timeouts, and rate limits (429) are intercepted and translated into standardized JSON error responses with automatic dataset fallback.
+- **Graceful Fault Tolerance**: Upstream HTTP errors, timeouts, and rate limits (429) are intercepted and translated into standardized JSON responses with automated dataset fallback.
 
 ---
 
 ## 📄 License & Disclaimer
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+This project is open-source and available under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 > [!NOTE]
 > Predictions generated by this system are statistical machine learning estimates derived from historical running trends, current operational status, and timetable data. Actual running times remain subject to dynamic track clearance, weather, signaling conditions, and railway operational priorities. This project is a predictive decision-support system and does not replace official Indian Railways operational systems.
