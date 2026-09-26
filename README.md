@@ -13,12 +13,13 @@
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9+-199900?style=for-the-badge&logo=leaflet&logoColor=white)](https://leafletjs.com/)
 [![Tests](https://img.shields.io/badge/Tests-59%20Passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+[![Presentation Deck](https://img.shields.io/badge/Presentation_Deck-PDF_(10_Slides)-E11D48?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](RailRadar_Presentation_Deck.pdf)
 
 <br/>
 
 **Rail Radar** is an enterprise-grade railway intelligence platform that unifies real-time GPS telemetry, timetable schedules, historical delay patterns, and trained gradient-boosted decision trees to predict arrival and departure times across Indian Railways stations.
 
-[Overview](#-overview) • [Tech Stack](#-tech-stack) • [Key Features](#-key-features) • [Architecture](#-system-architecture) • [ML Pipeline](#-machine-learning-pipeline) • [Setup Steps](#-setup-steps--quick-start) • [Team](#-team-members) • [Deployment](#-cloud-deployment)
+[Overview](#-overview) • [Presentation Deck (PDF)](RailRadar_Presentation_Deck.pdf) • [Tech Stack](#-tech-stack) • [Key Features](#-key-features) • [Architecture](#-system-architecture) • [ML Pipeline](#-machine-learning-pipeline) • [Setup Steps](#-setup-steps--quick-start) • [Team](#-team-members) • [Deployment](#-cloud-deployment)
 
 </div>
 
@@ -29,6 +30,7 @@
 | Field | Details |
 | :--- | :--- |
 | **Project Name** | **Rail Radar** — Live Indian Railway Intelligence |
+| **Presentation Deck** | 📊 [RailRadar_Presentation_Deck.pdf](RailRadar_Presentation_Deck.pdf) (10 Widescreen Slides, PDF) |
 | **Public GitHub Repo** | [https://github.com/anuj-maurya-01/RailRadar](https://github.com/anuj-maurya-01/RailRadar) |
 | **Domain / Track** | Smart Mobility, Public Transportation Intelligence & Applied Machine Learning |
 | **Core Problem** | Static train tracking schedules only display outdated timetable times or extrapolate delays from a single checkpoint, failing to account for network congestion, station dwell times, and speed dynamics. |
