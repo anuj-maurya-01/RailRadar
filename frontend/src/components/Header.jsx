@@ -31,7 +31,7 @@ export const Header = ({
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
-    const saved = localStorage.getItem('railradar_theme');
+    const saved = localStorage.getItem('yatrirail_theme') || localStorage.getItem('railradar_theme');
     if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       setIsDark(true);
       document.documentElement.classList.add('dark');
@@ -46,10 +46,10 @@ export const Header = ({
     setIsDark(nextDark);
     if (nextDark) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('railradar_theme', 'dark');
+      localStorage.setItem('yatrirail_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('railradar_theme', 'light');
+      localStorage.setItem('yatrirail_theme', 'light');
     }
   };
 
@@ -81,7 +81,7 @@ export const Header = ({
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-base sm:text-lg text-slate-950 dark:text-white tracking-tight leading-none font-sans">
-                  RAIL RADAR
+                  YatriRail
                 </span>
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-extrabold tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   LIVE

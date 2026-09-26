@@ -1,6 +1,6 @@
 @echo off
 echo ===================================================
-echo Starting Dynamic Railway ETA Prediction System
+echo Starting YatriRail -- Live Indian Railway Intelligence
 echo ===================================================
 
 echo [1/2] Launching FastAPI Backend on http://localhost:8000 ...

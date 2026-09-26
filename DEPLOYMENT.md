@@ -1,6 +1,6 @@
 # Production Deployment Guide
 
-This guide walks you through deploying the **Dynamic Railway ETA Prediction System** to the cloud:
+This guide walks you through deploying **YatriRail** ("Live Indian Railway Intelligence") to the cloud:
 - **Backend (FastAPI + Machine Learning)** &rarr; [Render](https://render.com)
 - **Frontend (React + Vite + Leaflet)** &rarr; [Vercel](https://vercel.com)
 

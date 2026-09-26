@@ -1,11 +1,11 @@
-# 🚆 Rail Radar — Frontend Application
+# 🚆 YatriRail — Frontend Application
 
 [![React](https://img.shields.io/badge/React-19.2+-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.3+-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0+-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9+-199900?style=flat-square&logo=leaflet&logoColor=white)](https://leafletjs.com/)
 
-A modern, responsive, transportation intelligence dashboard for **Rail Radar** ("Live Indian Railway Intelligence"), featuring interactive railway route mapping, live operational KPIs, real-time delay alerts, and dynamic ML arrival forecasts.
+A modern, responsive, transportation intelligence dashboard for **YatriRail** ("Live Indian Railway Intelligence"), featuring interactive railway route mapping, live operational KPIs, real-time delay alerts, and dynamic ML arrival forecasts.
 
 ---
 
@@ -35,7 +35,7 @@ frontend/src/
 │   ├── ETADelayChart.jsx       # Journey delay and station dwell visualization
 │   └── Header.jsx              # Navigation bar with smart train search autocomplete & theme toggle
 ├── pages/
-│   └── Home.jsx                # Main Rail Radar intelligence dashboard assembling all panels
+│   └── Home.jsx                # Main YatriRail intelligence dashboard assembling all panels
 ├── services/
 │   └── apiClient.js            # Axios client with fallback endpoints and error handling
 ├── utils/

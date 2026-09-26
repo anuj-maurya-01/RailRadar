@@ -7,7 +7,7 @@ export const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1">
-            <span className="font-bold text-slate-800 dark:text-slate-200">RAIL RADAR</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200">YatriRail</span>
             <span className="hidden sm:inline text-slate-300 dark:text-slate-600">•</span>
             <span>Live Indian Railway Intelligence &amp; ML Arrival Prediction</span>
           </div>

@@ -63,8 +63,8 @@ tags_metadata = [
 ]
 
 app = FastAPI(
-    title="Dynamic Railway ETA Prediction System",
-    description="Backend API for Dynamic Railway ETA Prediction using real-time tracking and ML models.",
+    title="YatriRail API",
+    description="Backend API for YatriRail — Live Indian Railway Intelligence & Dynamic ML ETA Forecasting.",
     version="1.0.0",
     lifespan=lifespan,
     openapi_tags=tags_metadata,

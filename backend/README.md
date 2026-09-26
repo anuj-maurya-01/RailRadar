@@ -1,11 +1,11 @@
-# 🚆 Rail Radar — Backend Service
+# 🚆 YatriRail — Backend Service
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.4+-F7931E?style=flat-square&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
 [![Tests](https://img.shields.io/badge/Tests-59%20Passing-brightgreen?style=flat-square&logo=pytest&logoColor=white)](tests/)
 
-Backend service for **Rail Radar** ("Live Indian Railway Intelligence"), providing real-time railway data processing, station coordinate interpolation, 12-feature ML feature engineering, dynamic delay forecasting, and fallback to the 8,490-train dataset.
+Backend service for **YatriRail** ("Live Indian Railway Intelligence"), providing real-time railway data processing, station coordinate interpolation, 12-feature ML feature engineering, dynamic delay forecasting, and fallback to the 8,490-train dataset.
 
 ---
 

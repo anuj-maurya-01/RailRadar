@@ -1,4 +1,4 @@
-# 🚆 Rail Radar
+# 🚆 YatriRail
 
 <div align="center">
 
@@ -13,13 +13,13 @@
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9+-199900?style=for-the-badge&logo=leaflet&logoColor=white)](https://leafletjs.com/)
 [![Tests](https://img.shields.io/badge/Tests-59%20Passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
-[![Presentation Deck](https://img.shields.io/badge/Presentation_Deck-PDF_(10_Slides)-E11D48?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](RailRadar_Presentation_Deck.pdf)
+[![Presentation Deck](https://img.shields.io/badge/Presentation_Deck-PDF_(10_Slides)-E11D48?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](YatriRail_Presentation_Deck.pdf)
 
 <br/>
 
-**Rail Radar** is an enterprise-grade railway intelligence platform that unifies real-time GPS telemetry, timetable schedules, historical delay patterns, and trained gradient-boosted decision trees to predict arrival and departure times across Indian Railways stations.
+**YatriRail** is an enterprise-grade railway intelligence platform that unifies real-time GPS telemetry, timetable schedules, historical delay patterns, and trained gradient-boosted decision trees to predict arrival and departure times across Indian Railways stations.
 
-[Overview](#-overview) • [Presentation Deck (PDF)](RailRadar_Presentation_Deck.pdf) • [Tech Stack](#-tech-stack) • [Key Features](#-key-features) • [Architecture](#-system-architecture) • [ML Pipeline](#-machine-learning-pipeline) • [Setup Steps](#-setup-steps--quick-start) • [Team](#-team-members) • [Deployment](#-cloud-deployment)
+[Overview](#-overview) • [Presentation Deck (PDF)](YatriRail_Presentation_Deck.pdf) • [Tech Stack](#-tech-stack) • [Key Features](#-key-features) • [Architecture](#-system-architecture) • [ML Pipeline](#-machine-learning-pipeline) • [Setup Steps](#-setup-steps--quick-start) • [Team](#-team-members) • [Deployment](#-cloud-deployment)
 
 </div>
 
@@ -29,8 +29,8 @@
 
 | Field | Details |
 | :--- | :--- |
-| **Project Name** | **Rail Radar** — Live Indian Railway Intelligence |
-| **Presentation Deck** | 📊 [RailRadar_Presentation_Deck.pdf](RailRadar_Presentation_Deck.pdf) (10 Widescreen Slides, PDF) |
+| **Project Name** | **YatriRail** — Live Indian Railway Intelligence |
+| **Presentation Deck** | 📊 [YatriRail_Presentation_Deck.pdf](YatriRail_Presentation_Deck.pdf) (10 Widescreen Slides, PDF) |
 | **Public GitHub Repo** | [https://github.com/anuj-maurya-01/RailRadar](https://github.com/anuj-maurya-01/RailRadar) |
 | **Domain / Track** | Smart Mobility, Public Transportation Intelligence & Applied Machine Learning |
 | **Core Problem** | Static train tracking schedules only display outdated timetable times or extrapolate delays from a single checkpoint, failing to account for network congestion, station dwell times, and speed dynamics. |
@@ -72,7 +72,7 @@
 
 Traditional railway tracking systems rely on static timetables or crude delay extrapolation from the most recent checkpoint. In reality, delays fluctuate dynamically depending on corridor congestion, time of day, distance remaining, and segment transit speeds.
 
-**Rail Radar** solves this by feeding 12 operational telemetry features into a pre-trained `HistGradientBoostingRegressor` model, delivering accurate delay predictions, expected arrival shifts, and live situational awareness across 8,490+ Indian Railways routes.
+**YatriRail** solves this by feeding 12 operational telemetry features into a pre-trained `HistGradientBoostingRegressor` model, delivering accurate delay predictions, expected arrival shifts, and live situational awareness across 8,490+ Indian Railways routes.
 
 $$\text{Live Telemetry} + \text{Route Schedules} + \text{Gradient Boosted ML} \longrightarrow \text{Dynamic Station \& Destination ETA}$$
 
@@ -195,7 +195,7 @@ Interactive Swagger documentation is available at `http://127.0.0.1:8000/docs` w
 
 ## 🚀 Setup Steps & Quick Start
 
-Follow these steps to run the complete Rail Radar system locally from source code.
+Follow these steps to run the complete YatriRail system locally from source code.
 
 ### 📋 Prerequisites
 - **Python**: `3.11`, `3.12`, or `3.13`
@@ -320,7 +320,7 @@ npm run build
 
 ## ☁️ Cloud Deployment
 
-Rail Radar is ready for production cloud deployment:
+YatriRail is ready for production cloud deployment:
 - **Backend API**: Hosted on [Render](https://render.com) using [`render.yaml`](render.yaml) or a manual Python Web Service.
 - **Frontend Dashboard**: Hosted on [Vercel](https://vercel.com) using [`frontend/vercel.json`](frontend/vercel.json).
 

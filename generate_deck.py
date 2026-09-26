@@ -2,7 +2,7 @@ import os
 from reportlab.lib.colors import HexColor
 from reportlab.pdfgen import canvas
 
-def create_presentation_deck(output_path="RailRadar_Presentation_Deck.pdf"):
+def create_presentation_deck(output_path="YatriRail_Presentation_Deck.pdf"):
     # 16:9 Widescreen dimensions (960 x 540 points)
     width = 960
     height = 540
@@ -69,7 +69,7 @@ def create_presentation_deck(output_path="RailRadar_Presentation_Deck.pdf"):
 
         c.setFont("Helvetica", 8)
         c.setFillColor(text_muted)
-        c.drawString(50, 20, "Rail Radar - Live Indian Railway Intelligence & Dynamic ML ETA Forecasting")
+        c.drawString(50, 20, "YatriRail - Live Indian Railway Intelligence & Dynamic ML ETA Forecasting")
         c.drawRightString(width - 50, 20, "Hackathon 2026 Presentation Deck")
 
     # =========================================================================
@@ -92,7 +92,7 @@ def create_presentation_deck(output_path="RailRadar_Presentation_Deck.pdf"):
     # Hero Title
     c.setFont("Helvetica-Bold", 38)
     c.setFillColor(text_primary)
-    c.drawString(50, height - 105, "RAIL RADAR")
+    c.drawString(50, height - 105, "YATRI RAIL")
 
     # Sub-hero Tagline
     c.setFont("Helvetica-Bold", 15)
@@ -327,11 +327,11 @@ def create_presentation_deck(output_path="RailRadar_Presentation_Deck.pdf"):
     c.showPage()
 
     # =========================================================================
-    # SLIDE 3: The Solution: Rail Radar
+    # SLIDE 3: The Solution: YatriRail
     # =========================================================================
     draw_slide_base(
         "Our Solution",
-        "Rail Radar: Live Indian Railway Intelligence",
+        "YatriRail: Live Indian Railway Intelligence",
         "Replacing guesswork with machine-learning arrival predictions and real-time situational awareness.",
         3
     )
@@ -818,7 +818,7 @@ def create_presentation_deck(output_path="RailRadar_Presentation_Deck.pdf"):
     c.setFillColor(text_secondary)
     r_bullets1 = [
         "Live railway APIs frequently impose strict query quotas.",
-        "Rail Radar detects HTTP 429 status codes automatically.",
+        "YatriRail detects HTTP 429 status codes automatically.",
         "Instantly fails over to the bundled 8,490-train offline dataset.",
         "End-users experience zero application crashes or blank states.",
     ]
@@ -991,7 +991,7 @@ def create_presentation_deck(output_path="RailRadar_Presentation_Deck.pdf"):
     # =========================================================================
     draw_slide_base(
         "What is Next?",
-        "Future Roadmap: Scaling Rail Radar Nationally",
+        "Future Roadmap: Scaling YatriRail Nationally",
         "Expanding from predictive passenger tracking to a comprehensive transit intelligence network.",
         9
     )
@@ -1123,7 +1123,7 @@ def create_presentation_deck(output_path="RailRadar_Presentation_Deck.pdf"):
     draw_slide_base(
         "Conclusion & Team",
         "Predictable Railway Travel for Every Commuter",
-        "Rail Radar brings transparency, predictive precision, and peace of mind to Indian Railways.",
+        "YatriRail brings transparency, predictive precision, and peace of mind to Indian Railways.",
         10
     )
 
@@ -1204,7 +1204,7 @@ def create_presentation_deck(output_path="RailRadar_Presentation_Deck.pdf"):
 
     c.setFont("Helvetica", 8)
     c.setFillColor(text_muted)
-    c.drawCentredString(705, 122, "Rail Radar: Live Indian Railway Intelligence")
+    c.drawCentredString(705, 122, "YatriRail: Live Indian Railway Intelligence")
     c.drawCentredString(705, 106, "Making train travel predictable and stress-free.")
 
     c.showPage()
@@ -1212,6 +1212,14 @@ def create_presentation_deck(output_path="RailRadar_Presentation_Deck.pdf"):
     # Save PDF
     c.save()
     print(f"Presentation deck successfully generated at: {output_path}")
+
+    # Also mirror to RailRadar_Presentation_Deck.pdf for backward compatibility
+    import shutil
+    try:
+        shutil.copyfile(output_path, "RailRadar_Presentation_Deck.pdf")
+        print("Mirrored to RailRadar_Presentation_Deck.pdf")
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     create_presentation_deck()
