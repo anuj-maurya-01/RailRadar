@@ -305,9 +305,12 @@ npm run build
 
 ## 👥 Team Members
 
-| Name | Role | Responsibilities | Profile |
+| Name | Role | Core Contributions | Profile |
 | :--- | :--- | :--- | :--- |
-| **Anuj Maurya** | Lead Full-Stack & ML Engineer | Project Architecture, FastAPI Backend Proxy, React 19 Frontend, Leaflet Route Mapping, Scikit-learn ETA Pipeline | [![GitHub](https://img.shields.io/badge/GitHub-anuj--maurya--01-181717?style=flat-square&logo=github)](https://github.com/anuj-maurya-01) [![Email](https://img.shields.io/badge/Email-anujmaurya0104%40gmail.com-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:anujmaurya0104@gmail.com) |
+| **Aru Shubham Singh** | ML / ETA Prediction | `HistGradientBoostingRegressor` model optimization, 12-feature schema engineering, and dynamic delay forecast inference | — |
+| **Archita Kesharwani** | Backend / Real-Time Engine | FastAPI async REST architecture, live RailRadar telemetry integration, failover fallback engine, and automated test suite | — |
+| **Anuj Maurya** | Frontend / Map & Dashboard | React 19 dashboard architecture, Leaflet route mapping engine, pulsing locomotive telemetry, and responsive UI components | [![GitHub](https://img.shields.io/badge/GitHub-anuj--maurya--01-181717?style=flat-square&logo=github)](https://github.com/anuj-maurya-01) [![Email](https://img.shields.io/badge/Email-anujmaurya0104%40gmail.com-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:anujmaurya0104@gmail.com) |
+| **Shlok Bhardwaj** | Data Analytics & Research / Intelligence | Railway operational delay analytics, historical station dwell research, live KPI calculations, and alert threshold logic | — |
 
 > *Built with passion during the hackathon to make railway travel transparent, predictable, and stress-free for millions of daily commuters.*
 
