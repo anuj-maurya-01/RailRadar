@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: railradar-backend
+    name: yatrirail-backend
     runtime: python
     rootDir: backend
     plan: free

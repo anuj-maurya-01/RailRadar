@@ -31,7 +31,7 @@
 | :--- | :--- |
 | **Project Name** | **YatriRail** — Live Indian Railway Intelligence |
 | **Presentation Deck** | 📊 [YatriRail_Presentation_Deck.pdf](YatriRail_Presentation_Deck.pdf) (10 Widescreen Slides, PDF) |
-| **Public GitHub Repo** | [https://github.com/anuj-maurya-01/RailRadar](https://github.com/anuj-maurya-01/RailRadar) |
+| **Public GitHub Repo** | [https://github.com/anuj-maurya-01/YatriRail](https://github.com/anuj-maurya-01/YatriRail) |
 | **Domain / Track** | Smart Mobility, Public Transportation Intelligence & Applied Machine Learning |
 | **Core Problem** | Static train tracking schedules only display outdated timetable times or extrapolate delays from a single checkpoint, failing to account for network congestion, station dwell times, and speed dynamics. |
 | **Solution** | A full-stack real-time situational dashboard combining live GPS telemetry with a 12-feature `HistGradientBoostingRegressor` ML model to compute dynamic, station-by-station arrival forecasts across 8,490+ trains. |
@@ -215,8 +215,8 @@ This automatically boots both the FastAPI backend on port `8000` and the React f
 
 #### Step 1: Clone the Repository
 ```bash
-git clone https://github.com/anuj-maurya-01/RailRadar.git
-cd RailRadar
+git clone https://github.com/anuj-maurya-01/YatriRail.git
+cd YatriRail
 ```
 
 #### Step 2: Backend Setup

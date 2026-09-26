@@ -197,7 +197,7 @@ def create_presentation_deck(output_path="YatriRail_Presentation_Deck.pdf"):
     c.setFont("Helvetica", 8)
     c.setFillColor(text_muted)
     c.drawString(65, 72, "Tech Stack: FastAPI (Python 3.11+) | React 19 | Vite 8 | Tailwind CSS 4 | Scikit-learn | Leaflet | Joblib")
-    c.drawString(65, 58, "Public GitHub Repository: https://github.com/anuj-maurya-01/RailRadar")
+    c.drawString(65, 58, "Public GitHub Repository: https://github.com/anuj-maurya-01/YatriRail")
 
     c.showPage()
 
@@ -1174,7 +1174,7 @@ def create_presentation_deck(output_path="YatriRail_Presentation_Deck.pdf"):
     c.drawString(520, 352, "Public GitHub Repository:")
     c.setFont("Helvetica-Bold", 9)
     c.setFillColor(accent_blue)
-    c.drawString(520, 336, "https://github.com/anuj-maurya-01/RailRadar")
+    c.drawString(520, 336, "https://github.com/anuj-maurya-01/YatriRail")
 
     c.setFont("Helvetica", 8)
     c.setFillColor(text_secondary)

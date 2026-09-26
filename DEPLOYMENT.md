@@ -11,14 +11,14 @@ This guide walks you through deploying **YatriRail** ("Live Indian Railway Intel
 ```text
 ┌─────────────────────────────────┐
 │     Vercel (React Frontend)     │
-│   https://railradar.vercel.app  │
+│   https://yatrirail.vercel.app  │
 └────────────────┬────────────────┘
                  │
                  │ HTTPS API Calls (VITE_API_BASE_URL)
                  ▼
 ┌─────────────────────────────────┐
 │     Render (FastAPI Backend)    │
-│  https://railradar.onrender.com │
+│  https://yatrirail.onrender.com │
 └────────────────┬────────────────┘
                  │
                  ├─► HistGradientBoostingRegressor ML Model (backend/model/)
@@ -36,7 +36,7 @@ You can deploy the backend using either **Method A (Render Blueprint - Recommend
 
 1. Log in to [Render](https://dashboard.render.com/).
 2. Click **New +** in the top navigation and select **Blueprint**.
-3. Connect your GitHub repository (`RailRadar`).
+3. Connect your GitHub repository (`YatriRail`).
 4. Render will automatically detect [`render.yaml`](render.yaml) in your repository root.
 5. In the configuration prompt, provide your environment variables:
    - `RAILRADAR_API_KEY`: Your RailRadar API key (e.g. `rg_...`).
@@ -51,9 +51,9 @@ If you prefer to configure manually via the Render Dashboard:
 
 1. Log in to [dashboard.render.com](https://dashboard.render.com/).
 2. Click **New +** &rarr; **Web Service**.
-3. Select **Build and deploy from a Git repository** and connect your repository (`RailRadar`).
+3. Select **Build and deploy from a Git repository** and connect your repository (`YatriRail`).
 4. Configure the service settings:
-   - **Name**: `railradar-backend` (or your preferred name)
+   - **Name**: `yatrirail-backend` (or your preferred name)
    - **Region**: Choose the region closest to your users (e.g., `Singapore` or `Oregon`)
    - **Branch**: `main`
    - **Root Directory**: `backend`
@@ -85,7 +85,7 @@ If you prefer to configure manually via the Render Dashboard:
 7. Click **Create Web Service**.
 
 > [!NOTE]
-> Once deployment completes, note down your Render Web Service URL (e.g. `https://railradar-backend.onrender.com`). You will need this URL for the frontend configuration.
+> Once deployment completes, note down your Render Web Service URL (e.g. `https://yatrirail-backend.onrender.com`). You will need this URL for the frontend configuration.
 
 ---
 
@@ -95,9 +95,9 @@ If you prefer to configure manually via the Render Dashboard:
 
 1. Log in to [Vercel](https://vercel.com/dashboard).
 2. Click **Add New...** &rarr; **Project**.
-3. Import your GitHub repository (`RailRadar`).
+3. Import your GitHub repository (`YatriRail`).
 4. In the **Configure Project** screen:
-   - **Project Name**: `railradar` (or your preferred name)
+   - **Project Name**: `yatrirail` (or your preferred name)
    - **Framework Preset**: `Vite` (automatically detected)
    - **Root Directory**: Click **Edit** and select **`frontend`** &rarr; click **Continue**.
    - **Build and Output Settings**:
@@ -107,10 +107,10 @@ If you prefer to configure manually via the Render Dashboard:
 5. Under **Environment Variables**, add:
    | Name | Value | Description |
    | :--- | :--- | :--- |
-   | `VITE_API_BASE_URL` | `https://railradar-backend.onrender.com` | **Your Render backend URL** (without trailing slash) |
+   | `VITE_API_BASE_URL` | `https://yatrirail-backend.onrender.com` | **Your Render backend URL** (without trailing slash) |
 6. Click **Deploy**.
 
-Vercel will build the frontend and assign a live production URL (e.g. `https://railradar.vercel.app`).
+Vercel will build the frontend and assign a live production URL (e.g. `https://yatrirail.vercel.app`).
 
 ---
 
@@ -127,7 +127,7 @@ npx vercel
 3. Set your production environment variable:
    ```bash
    npx vercel env add VITE_API_BASE_URL production
-   # Enter your Render URL: https://railradar-backend.onrender.com
+   # Enter your Render URL: https://yatrirail-backend.onrender.com
    ```
 4. Deploy to production:
    ```bash
@@ -142,7 +142,7 @@ npx vercel
    - Open `https://<YOUR-RENDER-BACKEND>.onrender.com/` &rarr; Returns JSON status:
      ```json
      {
-       "service": "Dynamic Railway ETA Prediction API",
+       "service": "YatriRail API",
        "status": "online",
        "version": "1.0.0",
        "docs": "/docs",
@@ -152,7 +152,7 @@ npx vercel
    - Open `https://<YOUR-RENDER-BACKEND>.onrender.com/docs` to view the interactive Swagger OpenAPI UI.
 
 2. **Verify Frontend**:
-   - Open your Vercel deployment URL (e.g. `https://railradar.vercel.app`).
+   - Open your Vercel deployment URL (e.g. `https://yatrirail.vercel.app`).
    - Enter a train number (e.g., `11013` or `11014`) into the search bar and press **Track Train**.
    - The interactive Leaflet route map, ML delay prediction cards, and live route timeline should load.
 
@@ -169,9 +169,9 @@ npx vercel
 - The backend dynamically allows:
   - Any URL ending in `.vercel.app` (covers production and preview deployments)
   - Any domain explicitly configured in the `FRONTEND_URL` environment variable
-- If you use a custom domain on Vercel (e.g. `https://railradar.mycustomdomain.com`), add it to `FRONTEND_URL` in your Render Environment Variables (separate multiple URLs with commas):
+- If you use a custom domain on Vercel (e.g. `https://yatrirail.mycustomdomain.com`), add it to `FRONTEND_URL` in your Render Environment Variables (separate multiple URLs with commas):
   ```env
-  FRONTEND_URL=https://railradar.mycustomdomain.com,https://railradar.vercel.app
+  FRONTEND_URL=https://yatrirail.mycustomdomain.com,https://yatrirail.vercel.app
   ```
 
 ### 3. Missing API Key Fallback
